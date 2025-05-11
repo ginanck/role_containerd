@@ -41,3 +41,12 @@ containerd_service_config:
     OOMScoreAdjust: -999
   Install:
     WantedBy: "multi-user.target"
+
+containerd_sysctl_conf_file: "99-containerd.conf"
+containerd_sysctl_parameters:
+  - name: net.ipv4.ip_forward
+    value: 1
+  - name: net.ipv6.conf.all.forwarding
+    value: 1
+  - name: vm.swappiness
+    value: 0

@@ -6,3 +6,32 @@
       - unzip
       - gzip
     state: present
+
+- name: create sysctl configuration file for containerd
+  ansible.builtin.template:
+    src: config/sysctl.conf.j2
+    dest: "/etc/sysctl.d/{{ containerd_sysctl_conf_file }}"
+    owner: root
+    group: root
+    mode: '0644'
+  register: sysctl_config
+
+- name: apply sysctl parameters
+  ansible.builtin.command: "sysctl -p /etc/sysctl.d/{{ containerd_sysctl_conf_file }}"
+  when: sysctl_config.changed
+
+- name: Stop and disable firewalld service
+  ansible.builtin.systemd:
+    name: firewalld
+    state: stopped
+    enabled: false
+  ignore_errors: true
+  when: ansible_os_family == 'RedHat'
+
+- name: Stop and disable ufw service
+  ansible.builtin.systemd:
+    name: ufw
+    state: stopped
+    enabled: false
+  ignore_errors: true
+  when: ansible_os_family == 'Debian'
