@@ -67,7 +67,9 @@
 
 - name: Install containerd.io package
   ansible.builtin.apt:
-    name: containerd.io
+    name:
+      - containerd.io
+      - containernetworking-plugins
     state: present
   become: true
 
