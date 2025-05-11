@@ -1,2 +1,43 @@
 ---
 # defaults file for role_containerd
+
+# https://containerd.io/downloads/
+# https://github.com/containerd/containerd/blob/main/docs/getting-started.md
+
+# containerd_version: "2.1.0"
+# runc_version: "1.3.0"
+# cni_plugins_version: "1.7.1"
+# containerd_architecture: "amd64"
+
+containerd_setup_from_binary: false
+containerd_setup_from_repo: true
+
+containerd_service_binary_custom_path: /usr/local/bin
+containerd_service_binary_default_path: /usr/bin
+containerd_service_binary_path: "{{ containerd_service_binary_default_path if (containerd_setup_from_repo | default(false)) else containerd_service_binary_custom_path }}"
+
+containerd_service_config:
+  Unit:
+    Description: "containerd container runtime"
+    Documentation: "https://containerd.io"
+    After: "network.target dbus.service"
+  Service:
+    ExecStartPre: "-/sbin/modprobe overlay"
+    ExecStart: "{{ containerd_service_binary_path }}/containerd"
+    Type: "notify"
+    Delegate: "yes"
+    KillMode: "process"
+    Restart: "always"
+    RestartSec: 5
+
+    # Having non-zero Limit*s causes performance problems due to accounting overhead
+    # in the kernel. We recommend using cgroups to do container-local accounting.
+    LimitNPROC: "infinity"
+    LimitCORE: "infinity"
+
+    # Comment TasksMax if your systemd version does not supports it.
+    # Only systemd 226 and above support this version.
+    TasksMax: "infinity"
+    OOMScoreAdjust: -999
+  Install:
+    WantedBy: "multi-user.target"

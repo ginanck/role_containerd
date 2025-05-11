@@ -1,0 +1,4 @@
+---
+
+- name: Install containerd.io package
+  ansible.builtin.include_tasks: repo/containerd-{{ ansible_os_family }}.yml

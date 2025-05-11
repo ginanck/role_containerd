@@ -1,0 +1,81 @@
+---
+
+- name: Set repository distribution name
+  ansible.builtin.set_fact:
+    repo_distribution: >-
+      {% if ansible_distribution == 'Debian' %}debian
+      {% elif ansible_distribution == 'Ubuntu' %}ubuntu
+      {% else %}{{ ansible_distribution | lower }}{% endif %}
+
+- name: Remove existing Docker repository file (Debian family)
+  ansible.builtin.file:
+    path: /etc/apt/sources.list.d/docker.list
+    state: absent
+  become: true
+
+- name: Remove existing Docker GPG key file (Debian family)
+  ansible.builtin.file:
+    path: /etc/apt/keyrings/docker.gpg
+    state: absent
+  become: true
+
+- name: Install prerequisites (Debian family)
+  ansible.builtin.apt:
+    name:
+      - apt-transport-https
+      - ca-certificates
+      - curl
+      - gnupg
+      - lsb-release
+      - libc6
+    state: present
+    update_cache: yes
+  become: true
+
+- name: Create keyrings directory (Debian family)
+  ansible.builtin.file:
+    path: /etc/apt/keyrings
+    state: directory
+    mode: '0755'
+  become: true
+
+- name: Import Docker GPG key
+  ansible.builtin.shell: |
+    curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+    chmod a+r /etc/apt/keyrings/docker.gpg
+  args:
+    executable: /bin/bash
+    creates: /etc/apt/keyrings/docker.gpg
+  become: true
+  register: gpg_import_result
+  changed_when: gpg_import_result.rc == 0
+
+- name: Add Docker repository (Debian family)
+  ansible.builtin.shell: |
+    echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/{{ repo_distribution | trim }} $(lsb_release -cs) stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null
+    apt-get update
+  args:
+    executable: /bin/bash
+  become: true
+  register: add_repo_debian_result
+  changed_when: add_repo_debian_result.rc == 0
+
+- name: Update apt cache after adding repository
+  ansible.builtin.apt:
+    update_cache: yes
+  become: true
+
+- name: Install containerd.io package
+  ansible.builtin.apt:
+    name: containerd.io
+    state: present
+  become: true
+
+- include_tasks: systemd-service.yml
+
+- name: Enable and start containerd service
+  ansible.builtin.systemd:
+    name: containerd
+    state: started
+    enabled: yes
+  become: true

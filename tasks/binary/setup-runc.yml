@@ -1,0 +1,20 @@
+---
+
+- name: Download runc binary file
+  ansible.builtin.get_url:
+    url: "{{ runc_binary.url }}"
+    dest: "/opt/packages/{{ runc_binary.filename }}"
+    mode: '0644'
+
+- name: Download runc verification file
+  ansible.builtin.get_url:
+    url: "{{ runc_verification.url }}"
+    dest: "/opt/packages/{{ runc_verification.filename }}"
+    mode: '0644'
+
+- name: Install runc binary
+  ansible.builtin.copy:
+    src: "/opt/packages/{{ runc_binary.filename }}"
+    dest: "/usr/local/bin/runc"
+    mode: '0755'
+    remote_src: yes
