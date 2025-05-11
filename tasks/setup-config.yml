@@ -1,0 +1,38 @@
+---
+
+- name: Create containerd config directory
+  ansible.builtin.file:
+    path: /etc/containerd
+    state: directory
+    mode: '0755'
+
+- name: Remove existing config.toml
+  ansible.builtin.file:
+    path: /etc/containerd/config.toml
+    state: absent
+
+- name: Generate default containerd config
+  ansible.builtin.shell: "{{ containerd_service_binary_path }}/containerd config default > /etc/containerd/config.toml"
+  args:
+    creates: /etc/containerd/config.toml
+
+- name: Configure containerd to use systemd cgroup driver
+  ansible.builtin.lineinfile:
+    path: /etc/containerd/config.toml
+    regexp: '(\s+)SystemdCgroup = false'
+    line: '\1SystemdCgroup = true'
+    backrefs: yes
+    state: present
+
+- name: Ensure CRI is not in disabled plugins
+  ansible.builtin.replace:
+    path: /etc/containerd/config.toml
+    regexp: 'disabled_plugins = \["cri"\]'
+    replace: 'disabled_plugins = []'
+
+- name: Configure sandbox (pause) image
+  ansible.builtin.lineinfile:
+    path: /etc/containerd/config.toml
+    regexp: 'sandbox_image = "registry.k8s.io/pause:3.6"'
+    line: '  sandbox_image = "registry.k8s.io/pause:3.10"'
+    state: present

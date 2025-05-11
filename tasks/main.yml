@@ -11,3 +11,6 @@
 - name: Setup ContainerD from Repo
   ansible.builtin.include_tasks: setup-repo.yml
   when: containerd_setup_from_repo is defined and containerd_setup_from_repo
+
+- name: Setup ContainerD Configuration
+  ansible.builtin.include_tasks: setup-config.yml
