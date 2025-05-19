@@ -10,7 +10,6 @@
   ansible.builtin.file:
     path: /etc/yum.repos.d/docker-ce.repo
     state: absent
-  become: true
 
 - name: Install dnf-plugins-core (RedHat family)
   ansible.builtin.dnf:
@@ -19,13 +18,11 @@
       - yum-utils
       - glibc
     state: present
-  become: true
 
 - name: Add Docker repository (RedHat family)
   ansible.builtin.shell: dnf config-manager --add-repo "https://download.docker.com/linux/{{ repo_distribution | trim }}/docker-ce.repo"
   args:
     executable: /bin/bash
-  become: true
   register: add_repo_result
   changed_when: add_repo_result.rc == 0
 
@@ -35,7 +32,6 @@
       - containerd.io
       - containernetworking-plugins
     state: present
-  become: true
 
 - include_tasks: systemd-service.yml
 
@@ -44,4 +40,4 @@
     name: containerd
     state: started
     enabled: yes
-  become: true
+    daemon_reload: yes

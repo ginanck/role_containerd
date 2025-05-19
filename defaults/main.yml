@@ -9,12 +9,10 @@
 # cni_plugins_version: "1.7.1"
 # containerd_architecture: "amd64"
 
-containerd_setup_from_binary: false
-containerd_setup_from_repo: true
+containerd_setup_type: "repo"
 
-containerd_service_binary_custom_path: /usr/local/bin
-containerd_service_binary_default_path: /usr/bin
-containerd_service_binary_path: "{{ containerd_service_binary_default_path if (containerd_setup_from_repo | default(false)) else containerd_service_binary_custom_path }}"
+containerd_binary_link_path: /usr/local/bin
+containerd_service_binary_path: "/opt/containerd/bin"
 
 containerd_service_config:
   Unit:

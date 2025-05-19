@@ -4,13 +4,8 @@
 - name: Install prerequisites
   ansible.builtin.include_tasks: prerequisites.yml
 
-- name: Setup ContainerD from Binaries
-  ansible.builtin.include_tasks: setup-binary.yml
-  when: containerd_setup_from_binary is defined and containerd_setup_from_binary
-
-- name: Setup ContainerD from Repo
-  ansible.builtin.include_tasks: setup-repo.yml
-  when: containerd_setup_from_repo is defined and containerd_setup_from_repo
+- name: Setup ContainerD
+  ansible.builtin.include_tasks: setup-{{ containerd_setup_type }}.yml
 
 - name: Setup ContainerD Configuration
   ansible.builtin.include_tasks: post-tasks.yml

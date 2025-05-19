@@ -1,4 +1,5 @@
 ---
+
 - name: Install required packages for extraction
   ansible.builtin.package:
     name:
@@ -6,6 +7,14 @@
       - unzip
       - gzip
     state: present
+
+- name: Ensure Containerd binaries are in PATH
+  template:
+    src: containerd.sh.j2
+    dest: /etc/profile.d/containerd.sh
+    owner: root
+    group: root
+    mode: '0644'
 
 - name: create sysctl configuration file for containerd
   ansible.builtin.template:

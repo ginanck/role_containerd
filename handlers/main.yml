@@ -5,3 +5,5 @@
   ansible.builtin.systemd:
     name: containerd
     state: restarted
+    enabled: yes
+    deamon_reload: yes

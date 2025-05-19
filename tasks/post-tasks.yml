@@ -11,8 +11,79 @@
     path: /etc/containerd/config.toml
     state: absent
 
+- name: Get latest nerdctl release version
+  ansible.builtin.uri:
+    url: https://api.github.com/repos/containerd/nerdctl/releases/latest
+    return_content: yes
+  register: nerdctl_latest
+
+- name: Get latest crictl release version
+  ansible.builtin.uri:
+    url: https://api.github.com/repos/kubernetes-sigs/cri-tools/releases/latest
+    return_content: yes
+  register: crictl_latest
+
+- name: Set version facts
+  ansible.builtin.set_fact:
+    nerdctl_version: "{{ nerdctl_version | default(nerdctl_latest.json.tag_name | regex_replace('^v', '')) }}"
+    crictl_version: "{{ crictl_version | default(crictl_latest.json.tag_name | regex_replace('^v', '')) }}"
+
+- name: Extract nerdctl
+  ansible.builtin.unarchive:
+    src: "https://github.com/containerd/nerdctl/releases/download/v{{ nerdctl_version }}/nerdctl-{{ nerdctl_version }}-linux-amd64.tar.gz"
+    dest: "{{ containerd_service_binary_path }}/"
+    mode: '0755'
+    remote_src: yes
+
+- name: Set up alternatives for nerdctl binaries
+  community.general.alternatives:
+    name: "nerdctl"
+    path: "{{ containerd_service_binary_path }}/nerdctl"
+    link: "{{ containerd_binary_link_path }}/nerdctl"
+    priority: "{{ ansible_date_time.epoch | int }}"
+
+- name: Setup when not installing from binary
+  when: containerd_setup_type == "repo"
+  block:
+    - name: Extract crictl
+      ansible.builtin.unarchive:
+        src: "https://github.com/kubernetes-sigs/cri-tools/releases/download/v{{ crictl_version }}/crictl-v{{ crictl_version }}-linux-amd64.tar.gz"
+        dest: "{{ containerd_service_binary_path }}/"
+        mode: '0755'
+        remote_src: yes
+
+    - name: Set up alternatives for crictl binaries
+      community.general.alternatives:
+        name: "crictl"
+        path: "{{ containerd_service_binary_path }}/crictl"
+        link: "{{ containerd_binary_link_path }}/crictl"
+        priority: "{{ ansible_date_time.epoch | int }}"
+
+    - name: Remove rootless setup scripts
+      ansible.builtin.file:
+        path: "{{ containerd_service_binary_path }}/{{ item }}"
+        state: absent
+      loop:
+        - containerd-rootless.sh
+        - containerd-rootless-setuptool.sh
+
+    - name: Find containerd binary path
+      ansible.builtin.command: which containerd
+      register: containerd_which_result
+      changed_when: false
+      failed_when: false
+
+    - name: Set default containerd path
+      ansible.builtin.set_fact:
+        containerd_default_path: "{{ containerd_which_result.stdout }}"
+
 - name: Generate default containerd config
-  ansible.builtin.shell: "{{ containerd_service_binary_path }}/containerd config default > /etc/containerd/config.toml"
+  ansible.builtin.shell: >-
+    {% if containerd_setup_type == "binary" %}
+    {{ containerd_service_binary_path }}/containerd config default > /etc/containerd/config.toml
+    {% else %}
+    {{ containerd_default_path }} config default > /etc/containerd/config.toml
+    {% endif %}
   args:
     creates: /etc/containerd/config.toml
 

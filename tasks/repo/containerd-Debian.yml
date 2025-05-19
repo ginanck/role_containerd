@@ -11,13 +11,11 @@
   ansible.builtin.file:
     path: /etc/apt/sources.list.d/docker.list
     state: absent
-  become: true
 
 - name: Remove existing Docker GPG key file (Debian family)
   ansible.builtin.file:
     path: /etc/apt/keyrings/docker.gpg
     state: absent
-  become: true
 
 - name: Install prerequisites (Debian family)
   ansible.builtin.apt:
@@ -30,14 +28,12 @@
       - libc6
     state: present
     update_cache: yes
-  become: true
 
 - name: Create keyrings directory (Debian family)
   ansible.builtin.file:
     path: /etc/apt/keyrings
     state: directory
     mode: '0755'
-  become: true
 
 - name: Import Docker GPG key
   ansible.builtin.shell: |
@@ -46,7 +42,6 @@
   args:
     executable: /bin/bash
     creates: /etc/apt/keyrings/docker.gpg
-  become: true
   register: gpg_import_result
   changed_when: gpg_import_result.rc == 0
 
@@ -56,14 +51,12 @@
     apt-get update
   args:
     executable: /bin/bash
-  become: true
   register: add_repo_debian_result
   changed_when: add_repo_debian_result.rc == 0
 
 - name: Update apt cache after adding repository
   ansible.builtin.apt:
     update_cache: yes
-  become: true
 
 - name: Install containerd.io package
   ansible.builtin.apt:
@@ -71,7 +64,6 @@
       - containerd.io
       - containernetworking-plugins
     state: present
-  become: true
 
 - include_tasks: systemd-service.yml
 
@@ -80,4 +72,4 @@
     name: containerd
     state: started
     enabled: yes
-  become: true
+    daemon_reload: true

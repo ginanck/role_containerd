@@ -3,32 +3,20 @@
 - name: Download containerd binary file
   ansible.builtin.get_url:
     url: "{{ containerd_binary.url }}"
-    dest: "/opt/packages/{{ containerd_binary.filename }}"
+    dest: "{{ containerd_service_binary_path }}/{{ containerd_binary.filename }}"
     mode: '0644'
 
 - name: Download containerd verification file
   ansible.builtin.get_url:
     url: "{{ containerd_verification.url }}"
-    dest: "/opt/packages/{{ containerd_verification.filename }}"
+    dest: "{{ containerd_service_binary_path }}/{{ containerd_verification.filename }}"
     mode: '0644'
 
 - name: Extract containerd
   ansible.builtin.unarchive:
-    src: "/opt/packages/{{ containerd_binary.filename }}"
-    dest: "/opt/extract"
+    src: "{{ containerd_service_binary_path }}/{{ containerd_binary.filename }}"
+    dest: "{{ containerd_service_binary_path }}/"
     remote_src: yes
-
-- name: Install containerd binaries
-  ansible.builtin.copy:
-    src: "/opt/extract/bin/{{ item }}"
-    dest: "{{ containerd_service_binary_path }}/{{ item }}"
-    mode: '0755'
-    remote_src: yes
-  loop:
-    - containerd
-    - containerd-shim-runc-v2
-    - ctr
-    - containerd-stress
 
 - name: Install containerd systemd service
   ansible.builtin.template:
