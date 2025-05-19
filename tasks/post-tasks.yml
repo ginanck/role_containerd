@@ -100,10 +100,3 @@
     path: /etc/containerd/config.toml
     regexp: 'disabled_plugins = \["cri"\]'
     replace: 'disabled_plugins = []'
-
-- name: Configure sandbox (pause) image
-  ansible.builtin.lineinfile:
-    path: /etc/containerd/config.toml
-    regexp: 'sandbox_image = "registry.k8s.io/pause:3.6"'
-    line: '  sandbox_image = "registry.k8s.io/pause:3.10"'
-    state: present
