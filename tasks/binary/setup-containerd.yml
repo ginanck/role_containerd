@@ -17,19 +17,3 @@
     src: "{{ containerd_service_binary_path }}/{{ containerd_binary.filename }}"
     dest: "{{ containerd_service_binary_path }}/"
     remote_src: yes
-
-- name: Install containerd systemd service
-  ansible.builtin.template:
-    src: containerd.service
-    dest: /etc/systemd/system/containerd.service
-    mode: '0644'
-    owner: root
-    group: root
-  notify: restart containerd
-
-- name: Enable and start containerd service
-  ansible.builtin.systemd:
-    name: containerd
-    state: started
-    enabled: true
-    daemon_reload: true

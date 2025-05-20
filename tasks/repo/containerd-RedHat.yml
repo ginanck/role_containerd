@@ -32,12 +32,3 @@
       - containerd.io
       - containernetworking-plugins
     state: present
-
-- include_tasks: systemd-service.yml
-
-- name: Enable and start containerd service
-  ansible.builtin.systemd:
-    name: containerd
-    state: started
-    enabled: yes
-    daemon_reload: yes

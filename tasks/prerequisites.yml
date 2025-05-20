@@ -1,13 +1,5 @@
 ---
 
-- name: Install required packages for extraction
-  ansible.builtin.package:
-    name:
-      - tar
-      - unzip
-      - gzip
-    state: present
-
 - name: Ensure Containerd binaries are in PATH
   template:
     src: containerd.sh.j2
@@ -28,19 +20,3 @@
 - name: apply sysctl parameters
   ansible.builtin.command: "sysctl -p /etc/sysctl.d/{{ containerd_sysctl_conf_file }}"
   when: sysctl_config.changed
-
-- name: Stop and disable firewalld service
-  ansible.builtin.systemd:
-    name: firewalld
-    state: stopped
-    enabled: false
-  ignore_errors: true
-  when: ansible_os_family == 'RedHat'
-
-- name: Stop and disable ufw service
-  ansible.builtin.systemd:
-    name: ufw
-    state: stopped
-    enabled: false
-  ignore_errors: true
-  when: ansible_os_family == 'Debian'

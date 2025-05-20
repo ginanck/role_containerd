@@ -14,32 +14,6 @@ containerd_setup_type: "repo"
 containerd_binary_link_path: /usr/local/bin
 containerd_service_binary_path: "/opt/containerd/bin"
 
-containerd_service_config:
-  Unit:
-    Description: "containerd container runtime"
-    Documentation: "https://containerd.io"
-    After: "network.target dbus.service"
-  Service:
-    ExecStartPre: "-/sbin/modprobe overlay"
-    ExecStart: "{{ containerd_service_binary_path }}/containerd"
-    Type: "notify"
-    Delegate: "yes"
-    KillMode: "process"
-    Restart: "always"
-    RestartSec: 5
-
-    # Having non-zero Limit*s causes performance problems due to accounting overhead
-    # in the kernel. We recommend using cgroups to do container-local accounting.
-    LimitNPROC: "infinity"
-    LimitCORE: "infinity"
-
-    # Comment TasksMax if your systemd version does not supports it.
-    # Only systemd 226 and above support this version.
-    TasksMax: "infinity"
-    OOMScoreAdjust: -999
-  Install:
-    WantedBy: "multi-user.target"
-
 containerd_sysctl_conf_file: "99-containerd.conf"
 containerd_sysctl_parameters:
   - name: net.ipv4.ip_forward
@@ -48,3 +22,9 @@ containerd_sysctl_parameters:
     value: 1
   - name: vm.swappiness
     value: 0
+
+containerd_crictl_runtime_endpoint: unix:///run/containerd/containerd.sock
+containerd_crictl_image_endpoint: unix:///run/containerd/containerd.sock
+containerd_crictl_timeout: 10
+containerd_crictl_debug: false
+containerd_crictl_config: /etc/crictl.yaml

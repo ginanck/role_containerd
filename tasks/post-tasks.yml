@@ -11,12 +11,6 @@
     path: /etc/containerd/config.toml
     state: absent
 
-- name: Get latest nerdctl release version
-  ansible.builtin.uri:
-    url: https://api.github.com/repos/containerd/nerdctl/releases/latest
-    return_content: yes
-  register: nerdctl_latest
-
 - name: Get latest crictl release version
   ansible.builtin.uri:
     url: https://api.github.com/repos/kubernetes-sigs/cri-tools/releases/latest
@@ -25,26 +19,17 @@
 
 - name: Set version facts
   ansible.builtin.set_fact:
-    nerdctl_version: "{{ nerdctl_version | default(nerdctl_latest.json.tag_name | regex_replace('^v', '')) }}"
     crictl_version: "{{ crictl_version | default(crictl_latest.json.tag_name | regex_replace('^v', '')) }}"
-
-- name: Extract nerdctl
-  ansible.builtin.unarchive:
-    src: "https://github.com/containerd/nerdctl/releases/download/v{{ nerdctl_version }}/nerdctl-{{ nerdctl_version }}-linux-amd64.tar.gz"
-    dest: "{{ containerd_service_binary_path }}/"
-    mode: '0755'
-    remote_src: yes
-
-- name: Set up alternatives for nerdctl binaries
-  community.general.alternatives:
-    name: "nerdctl"
-    path: "{{ containerd_service_binary_path }}/nerdctl"
-    link: "{{ containerd_binary_link_path }}/nerdctl"
-    priority: "{{ ansible_date_time.epoch | int }}"
 
 - name: Setup when not installing from binary
   when: containerd_setup_type == "repo"
   block:
+    - name: Create containerd bin dir
+      ansible.builtin.file:
+        path: "{{ containerd_service_binary_path }}"
+        state: directory
+        mode: '0755'
+
     - name: Extract crictl
       ansible.builtin.unarchive:
         src: "https://github.com/kubernetes-sigs/cri-tools/releases/download/v{{ crictl_version }}/crictl-v{{ crictl_version }}-linux-amd64.tar.gz"
@@ -100,3 +85,40 @@
     path: /etc/containerd/config.toml
     regexp: 'disabled_plugins = \["cri"\]'
     replace: 'disabled_plugins = []'
+
+- name: Setup when not installing from binary
+  when: containerd_setup_type == "repo"
+  block:
+    - name: Find containerd binary path
+      ansible.builtin.command: which containerd
+      register: containerd_which_result
+      changed_when: false
+      failed_when: false
+
+    - name: Set containerd systemd service path
+      ansible.builtin.set_fact:
+        containerd_service_binary_path: "{{ containerd_which_result.stdout | dirname }}"
+
+- name: Create crictl configuration file
+  ansible.builtin.template:
+    src: crictl.yaml.j2
+    dest: "{{ containerd_crictl_config }}"
+    owner: root
+    group: root
+    mode: '0644'
+
+- name: Install containerd systemd service
+  ansible.builtin.template:
+    src: containerd.service.j2
+    dest: /etc/systemd/system/containerd.service
+    owner: root
+    group: root
+    mode: '0644'
+  notify: restart containerd
+
+- name: Enable and start containerd service
+  ansible.builtin.systemd:
+    name: containerd
+    state: started
+    enabled: yes
+    daemon_reload: yes
