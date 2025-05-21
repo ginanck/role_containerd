@@ -15,6 +15,6 @@
 - name: Install runc binary
   ansible.builtin.copy:
     src: "/opt/packages/{{ runc_binary.filename }}"
-    dest: "/usr/local/bin/runc"
+    dest: "{{ containerd_binary_link_path }}/runc"
     mode: '0755'
     remote_src: yes

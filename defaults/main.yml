@@ -11,7 +11,7 @@
 
 containerd_setup_type: "repo"
 
-containerd_binary_link_path: /usr/local/bin
+containerd_binary_link_path: /usr/bin
 containerd_service_binary_path: "/opt/containerd/bin"
 
 containerd_sysctl_conf_file: "99-containerd.conf"
