@@ -84,7 +84,7 @@
   ansible.builtin.replace:
     path: /etc/containerd/config.toml
     regexp: 'disabled_plugins = \["cri"\]'
-    replace: 'disabled_plugins = []'
+    replace: 'disabled_plugins = \[\]'
 
 - name: Setup when not installing from binary
   when: containerd_setup_type == "repo"
