@@ -131,7 +131,7 @@
     mode: '0644'
   register: containerd_service_template
 
-- name: Restart containerd service immediately
+- name: Restart containerd service
   ansible.builtin.systemd:
     name: containerd
     state: restarted
@@ -141,9 +141,3 @@
     (systemd_cgroup_check is defined and systemd_cgroup_check.rc == 0) or
     (disabled_cri_check is defined and disabled_cri_check.rc == 0) or
     containerd_service_template is defined and containerd_service_template.changed
-
-- name: Enable and start containerd service
-  ansible.builtin.systemd:
-    name: containerd
-    state: started
-    enabled: yes
