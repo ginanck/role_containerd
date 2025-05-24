@@ -1,3 +1,4 @@
+# {{ ansible_managed }} - DO NOT EDIT MANUALLY
 disabled_plugins = {{ containerd_config_disabled_plugins | default([]) | to_json }}
 imports = []
 oom_score = 0
@@ -19,7 +20,7 @@ version = 2
   uid = 0
 
 [grpc]
-  address = "unix://{{ containerd_crictl_runtime_endpoint }}"
+  address = "{{ containerd_crictl_runtime_endpoint }}"
   gid = 0
   max_recv_message_size = 16777216
   max_send_message_size = 16777216
