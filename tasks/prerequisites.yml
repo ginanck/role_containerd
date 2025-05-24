@@ -1,6 +1,6 @@
 ---
 
-- name: Ensure Containerd binaries are in PATH
+- name: ensure containerd binaries are in PATH
   template:
     src: containerd.sh.j2
     dest: /etc/profile.d/containerd.sh

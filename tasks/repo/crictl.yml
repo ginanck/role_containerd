@@ -1,0 +1,39 @@
+---
+
+- name: create containerd bin dir
+  ansible.builtin.file:
+    path: "{{ containerd_service_binary_path }}"
+    state: directory
+    mode: '0755'
+
+- name: extract crictl
+  ansible.builtin.unarchive:
+    src: "https://github.com/kubernetes-sigs/cri-tools/releases/download/v{{ crictl_version }}/crictl-v{{ crictl_version }}-linux-amd64.tar.gz"
+    dest: "{{ containerd_service_binary_path }}/"
+    mode: '0755'
+    remote_src: yes
+
+- name: set up alternatives for crictl binaries
+  community.general.alternatives:
+    name: "crictl"
+    path: "{{ containerd_service_binary_path }}/crictl"
+    link: "{{ containerd_binary_link_path }}/crictl"
+    priority: "{{ ansible_date_time.epoch | int }}"
+
+- name: remove rootless setup scripts
+  ansible.builtin.file:
+    path: "{{ containerd_service_binary_path }}/{{ item }}"
+    state: absent
+  loop:
+    - containerd-rootless.sh
+    - containerd-rootless-setuptool.sh
+
+- name: find containerd binary path
+  ansible.builtin.command: which containerd
+  register: containerd_which_result
+  changed_when: false
+  failed_when: false
+
+- name: set default containerd path
+  ansible.builtin.set_fact:
+    containerd_service_binary_path: "{{ containerd_which_result.stdout | dirname }}"

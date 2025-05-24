@@ -1,11 +1,11 @@
 ---
 # tasks file for role_containerd
 
-- name: Install prerequisites
+- name: Install Prerequisite Packages
   ansible.builtin.include_tasks: prerequisites.yml
 
-- name: Setup ContainerD
-  ansible.builtin.include_tasks: setup-{{ containerd_setup_type }}.yml
+- name: Setup Containerd runtime
+  ansible.builtin.include_tasks: "{{ containerd_setup_type }}/main.yml"
 
-- name: Setup ContainerD Configuration
+- name: Setup Containerd Configuration
   ansible.builtin.include_tasks: post-tasks.yml

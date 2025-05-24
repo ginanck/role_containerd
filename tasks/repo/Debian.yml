@@ -1,0 +1,59 @@
+---
+
+- name: set repository distribution name
+  ansible.builtin.set_fact:
+    repo_distribution: >-
+      {% if ansible_distribution == 'Debian' %}debian
+      {% elif ansible_distribution == 'Ubuntu' %}ubuntu
+      {% else %}{{ ansible_distribution | lower }}{% endif %}
+
+- name: install prerequisites (Debian family)
+  ansible.builtin.apt:
+    name:
+      - apt-transport-https
+      - ca-certificates
+      - curl
+      - gnupg
+      - lsb-release
+      - libc6
+    state: present
+    update_cache: yes
+
+- name: create keyrings directory (Debian family)
+  ansible.builtin.file:
+    path: /etc/apt/keyrings
+    state: directory
+    mode: '0755'
+
+- name: check if docker gpg key exists
+  ansible.builtin.stat:
+    path: /etc/apt/keyrings/docker.gpg
+  register: docker_gpg_key
+
+- name: add docker gpg key (Debian family)
+  ansible.builtin.apt_key:
+    url: "https://download.docker.com/linux/{{ repo_distribution | trim }}/gpg"
+    keyring: /etc/apt/keyrings/docker.gpg
+    state: present
+  when: not docker_gpg_key.stat.exists
+
+- name: check if docker repository exists
+  ansible.builtin.stat:
+    path: /etc/apt/sources.list.d/docker.list
+  register: docker_repo_file
+
+- name: add docker repository (Debian family)
+  ansible.builtin.apt_repository:
+    repo: "deb [arch={{ ansible_architecture | regex_replace('x86_64', 'amd64') | regex_replace('aarch64', 'arm64') }} signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/{{ repo_distribution | trim }} {{ ansible_distribution_release }} stable"
+    filename: docker
+    state: present
+    update_cache: yes
+  when: not docker_repo_file.stat.exists
+
+- name: install containerd.io package
+  ansible.builtin.apt:
+    name:
+      - containerd.io
+      - containernetworking-plugins
+    state: present
+    update_cache: true

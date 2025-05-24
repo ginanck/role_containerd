@@ -1,5 +1,5 @@
+# {{ ansible_managed }} - DO NOT EDIT MANUALLY
 # Containerd sysctl parameters
-# Managed by Ansible - DO NOT EDIT MANUALLY
 
 {% for item in containerd_sysctl_parameters %}
 {{ item.name }}={{ item.value }}

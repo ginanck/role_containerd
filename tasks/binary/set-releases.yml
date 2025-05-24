@@ -1,17 +1,19 @@
 ---
 
-- name: Set default version variables if not defined
+- name: set default version variables if not defined
   ansible.builtin.set_fact:
     containerd_version: "{{ containerd_version | default('') }}"
-    runc_version: "{{ runc_version | default('') }}"
-    cni_plugins_version: "{{ cni_plugins_version | default('') }}"
+    runc_version: "{{ containerd_runc_version | default('') }}"
+    cni_plugins_version: "{{ containerd_cni_plugins_version | default('') }}"
   delegate_to: localhost
   become: false
   run_once: true
 
-- name: Get releases from GitHub API for repositories with undefined versions
+- name: get latest releases from GitHub API for binary versions without token
   ansible.builtin.uri:
-    url: "https://api.github.com/repos/{{ item.repo }}/releases"
+    url: "https://api.github.com/repos/{{ binary.repo }}/releases"
+    method: GET
+    status_code: 200
     return_content: yes
   delegate_to: localhost
   become: false
@@ -22,22 +24,49 @@
     - { repo: "opencontainers/runc", name: "runc", version: "{{ runc_version }}" }
     - { repo: "containernetworking/plugins", name: "cni_plugins", version: "{{ cni_plugins_version }}" }
   loop_control:
-    loop_var: item
-    label: "{{ item.name }}"
-  when: item.version | length == 0
+    loop_var: binary
+    label: "{{ binary.name }}"
+  when:
+    - binary.version | length == 0
+    - github_access_token is not defined
 
-- name: Parse and set versions (use latest stable from GitHub if not defined)
+- name: get latest releases from GitHub API for binary versions with token
+  ansible.builtin.uri:
+    url: "https://api.github.com/repos/{{ binary.repo }}/releases"
+    method: GET
+    headers:
+      Authorization: "Bearer {{ github_access_token }}"
+      Accept: "application/vnd.github.v3+json"
+      X-GitHub-Api-Version: "2022-11-28"
+    status_code: 200
+    return_content: yes
+  delegate_to: localhost
+  become: false
+  run_once: true
+  register: github_releases
+  loop:
+    - { repo: "containerd/containerd", name: "containerd", version: "{{ containerd_version }}" }
+    - { repo: "opencontainers/runc", name: "runc", version: "{{ runc_version }}" }
+    - { repo: "containernetworking/plugins", name: "cni_plugins", version: "{{ cni_plugins_version }}" }
+  loop_control:
+    loop_var: binary
+    label: "{{ binary.name }}"
+  when:
+    - binary.version | length == 0
+    - github_access_token is defined
+
+- name: parse and set versions (use latest stable from GitHub)
   ansible.builtin.set_fact:
-    "{{ item.item.name }}_version": >-
-      {{ item.item.version if item.item.version | length > 0 else 
+    "{{ binary.item.name }}_version": >-
+      {{ binary.item.version if binary.item.version | length > 0 else 
          (item.json | default([]) 
           | selectattr('prerelease', 'equalto', false)
           | selectattr('draft', 'equalto', false)
           | list | first | default({}) | dict2items
           | selectattr('key', 'equalto', 'tag_name')
           | map(attribute='value') | list | first | regex_replace('^v', '')) }}
-    "{{ item.item.name }}_tag": >-
-      {{ 'v' + item.item.version if item.item.version | length > 0 else
+    "{{ binary.item.name }}_tag": >-
+      {{ 'v' + binary.item.version if binary.item.version | length > 0 else
          (item.json | default([])
           | selectattr('prerelease', 'equalto', false)
           | selectattr('draft', 'equalto', false)
@@ -46,14 +75,14 @@
           | map(attribute='value') | list | first) }}
   loop: "{{ github_releases.results | default([]) }}"
   loop_control:
-    loop_var: item
-    label: "{{ item.item.name }}"
+    loop_var: binary
+    label: "{{ binary.item.name }}"
   delegate_to: localhost
   become: false
   run_once: true
-  when: item is defined
+  when: binary is defined
 
-- name: Set version variables for items with predefined versions
+- name: set version variables for items with predefined versions
   ansible.builtin.set_fact:
     "{{ item.name }}_version": "{{ item.version }}"
     "{{ item.name }}_tag": "v{{ item.version }}"

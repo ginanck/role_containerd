@@ -1,21 +1,21 @@
 ---
 
-- name: Create containerd config directory
+- name: create containerd config directory
   ansible.builtin.file:
     path: /etc/containerd
     state: directory
     mode: '0755'
 
-- name: Get latest crictl release version without token
+- name: get latest crictl release version without token
   ansible.builtin.uri:
     url: https://api.github.com/repos/kubernetes-sigs/cri-tools/releases/latest
     method: GET
     status_code: 200
     return_content: yes
-  when: github_access_token is not defined
   register: crictl_latest
+  when: github_access_token is not defined
 
-- name: Get latest crictl release version with token
+- name: get latest crictl release version with token
   ansible.builtin.uri:
     url: https://api.github.com/repos/kubernetes-sigs/cri-tools/releases/latest
     method: GET
@@ -25,135 +25,55 @@
       X-GitHub-Api-Version: "2022-11-28"
     status_code: 200
     return_content: yes
-  when: github_access_token is defined
   register: crictl_latest
+  when: github_access_token is defined
 
-- name: Set version facts
+- name: set version facts
   ansible.builtin.set_fact:
     crictl_version: "{{ crictl_version | default(crictl_latest.json.tag_name | regex_replace('^v', '')) }}"
   changed_when: false
 
-- name: Setup when not installing from binary
+- name: setup crictl binary for repo installation type
+  ansible.builtin.include_tasks: "{{ containerd_setup_type }}/crictl.yml"
   when: containerd_setup_type == "repo"
-  block:
-    - name: Create containerd bin dir
-      ansible.builtin.file:
-        path: "{{ containerd_service_binary_path }}"
-        state: directory
-        mode: '0755'
 
-    - name: Extract crictl
-      ansible.builtin.unarchive:
-        src: "https://github.com/kubernetes-sigs/cri-tools/releases/download/v{{ crictl_version }}/crictl-v{{ crictl_version }}-linux-amd64.tar.gz"
-        dest: "{{ containerd_service_binary_path }}/"
-        mode: '0755'
-        remote_src: yes
+- name: create containerd configuration file
+  ansible.builtin.template:
+    src: config.toml.j2
+    dest: "{{ containerd_config_file }}"
+    owner: root
+    group: root
+    mode: '0644'
+    backup: true
+  register: containerd_config_toml_result
 
-    - name: Set up alternatives for crictl binaries
-      community.general.alternatives:
-        name: "crictl"
-        path: "{{ containerd_service_binary_path }}/crictl"
-        link: "{{ containerd_binary_link_path }}/crictl"
-        priority: "{{ ansible_date_time.epoch | int }}"
-
-    - name: Remove rootless setup scripts
-      ansible.builtin.file:
-        path: "{{ containerd_service_binary_path }}/{{ item }}"
-        state: absent
-      loop:
-        - containerd-rootless.sh
-        - containerd-rootless-setuptool.sh
-
-    - name: Find containerd binary path
-      ansible.builtin.command: which containerd
-      register: containerd_which_result
-      changed_when: false
-      failed_when: false
-
-    - name: Set default containerd path
-      ansible.builtin.set_fact:
-        containerd_default_path: "{{ containerd_which_result.stdout }}"
-
-- name: Delete existing containerd config
-  ansible.builtin.file:
-    path: /etc/containerd/config.toml
-    state: absent
-
-- name: Generate default containerd config
-  ansible.builtin.shell: >-
-    {% if containerd_setup_type == "binary" %}
-    {{ containerd_service_binary_path }}/containerd config default > /etc/containerd/config.toml
-    {% else %}
-    {{ containerd_default_path }} config default > /etc/containerd/config.toml
-    {% endif %}
-  args:
-    creates: /etc/containerd/config.toml
-
-- name: Check if containerd config has SystemdCgroup = false
-  ansible.builtin.shell: grep "SystemdCgroup = false" /etc/containerd/config.toml
-  register: systemd_cgroup_check
-  failed_when: false
-  changed_when: false
-
-- name: Check if containerd config has disabled_plugins = ["cri"]
-  ansible.builtin.shell: grep 'disabled_plugins = \["cri"\]' /etc/containerd/config.toml
-  register: disabled_cri_check
-  failed_when: false
-  changed_when: false
-
-- name: Configure containerd to use systemd cgroup driver
-  ansible.builtin.lineinfile:
-    path: /etc/containerd/config.toml
-    regexp: '(\s+)SystemdCgroup = false'
-    line: '\1SystemdCgroup = true'
-    backrefs: yes
-    state: present
-  when: systemd_cgroup_check.rc == 0
-
-- name: Ensure CRI is not in disabled plugins
-  ansible.builtin.replace:
-    path: /etc/containerd/config.toml
-    regexp: 'disabled_plugins = \["cri"\]'
-    replace: 'disabled_plugins = \[\]'
-  when: disabled_cri_check.rc == 0
-
-- name: Setup when not installing from binary
-  when: containerd_setup_type == "repo"
-  block:
-    - name: Find containerd binary path
-      ansible.builtin.command: which containerd
-      register: containerd_which_result
-      changed_when: false
-      failed_when: false
-
-    - name: Set containerd systemd service path
-      ansible.builtin.set_fact:
-        containerd_service_binary_path: "{{ containerd_which_result.stdout | dirname }}"
-
-- name: Create crictl configuration file
+- name: create crictl configuration file
   ansible.builtin.template:
     src: crictl.yaml.j2
-    dest: "{{ containerd_crictl_config }}"
+    dest: "{{ containerd_crictl_config_file }}"
     owner: root
     group: root
     mode: '0644'
+    backup: true
+  register: crictl_conf_result
 
-- name: Install containerd systemd service
+- name: install containerd systemd service
   ansible.builtin.template:
     src: containerd.service.j2
-    dest: /etc/systemd/system/containerd.service
+    dest: "{{ containerd_systemd_service_file }}"
     owner: root
     group: root
     mode: '0644'
-  register: containerd_service_template
+    backup: true
+  register: containerd_service_result
 
-- name: Restart containerd service
+- name: restart containerd service
   ansible.builtin.systemd:
     name: containerd
     state: restarted
     enabled: yes
     daemon_reload: yes
   when: >
-    (systemd_cgroup_check is defined and systemd_cgroup_check.rc == 0) or
-    (disabled_cri_check is defined and disabled_cri_check.rc == 0) or
-    containerd_service_template is defined and containerd_service_template.changed
+    (crictl_conf_result is defined and crictl_conf_result.changed) or
+    (containerd_service_result is defined and containerd_service_result.changed) or
+    (containerd_config_toml_result is defined and containerd_config_toml_result.changed)

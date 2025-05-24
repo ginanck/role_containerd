@@ -1,0 +1,30 @@
+---
+
+- name: set repository distribution name
+  ansible.builtin.set_fact:
+    repo_distribution: >-
+      {% if ansible_distribution in ['CentOS', 'Fedora', 'RedHat', 'AlmaLinux', 'Rocky'] %}rhel
+      {% else %}{{ ansible_distribution | lower }}{% endif %}
+
+- name: install dnf-plugins-core (RedHat family)
+  ansible.builtin.dnf:
+    name:
+      - dnf-plugins-core
+      - yum-utils
+      - glibc
+    state: latest
+
+- name: download docker repository file (RedHat family)
+  ansible.builtin.get_url:
+    url: "https://download.docker.com/linux/{{ repo_distribution | trim }}/docker-ce.repo"
+    dest: /etc/yum.repos.d/docker-ce.repo
+    mode: '0644'
+    owner: root
+    group: root
+
+- name: install containerd.io package
+  ansible.builtin.dnf:
+    name:
+      - containerd.io
+      - containernetworking-plugins
+    state: latest

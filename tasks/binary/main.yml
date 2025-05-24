@@ -1,0 +1,25 @@
+---
+
+- name: Create Packages Directory
+  ansible.builtin.file:
+    path: "/opt/{{ item }}"
+    state: directory
+    mode: '0755'
+  loop:
+    - containerd
+    - containerd/bin
+
+- name: Set Release Versions
+  import_tasks: binary/set-releases.yml
+
+- name: Set Download URLs
+  import_tasks: binary/set-download-urls.yml
+
+- name: Setup Containerd
+  import_tasks: binary/setup-containerd.yml
+
+- name: Setup Runc
+  import_tasks: binary/setup-runc.yml
+
+- name: Setup CNI Plugins
+  import_tasks: binary/setup-cni-plugins.yml

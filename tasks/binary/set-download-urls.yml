@@ -1,13 +1,13 @@
 ---
 
-- name: Set architecture if not defined
+- name: set architecture if not defined
   ansible.builtin.set_fact:
     containerd_architecture: "{{ containerd_architecture | default('amd64') }}"
   delegate_to: localhost
   become: false
   run_once: true
 
-- name: Set download URLs and filenames for each component
+- name: set download URLs and filenames for each component
   ansible.builtin.set_fact:
     # Containerd binary and verification
     containerd_binary:
