@@ -6,10 +6,26 @@
     state: directory
     mode: '0755'
 
-- name: Get latest crictl release version
+- name: Get latest crictl release version without token
   ansible.builtin.uri:
     url: https://api.github.com/repos/kubernetes-sigs/cri-tools/releases/latest
+    method: GET
+    status_code: 200
     return_content: yes
+  when: github_access_token is not defined
+  register: crictl_latest
+
+- name: Get latest crictl release version with token
+  ansible.builtin.uri:
+    url: https://api.github.com/repos/kubernetes-sigs/cri-tools/releases/latest
+    method: GET
+    headers:
+      Authorization: "Bearer {{ github_access_token }}"
+      Accept: "application/vnd.github.v3+json"
+      X-GitHub-Api-Version: "2022-11-28"
+    status_code: 200
+    return_content: yes
+  when: github_access_token is defined
   register: crictl_latest
 
 - name: Set version facts
