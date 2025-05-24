@@ -19,7 +19,7 @@ version = 2
   uid = 0
 
 [grpc]
-  address = "{{ containerd_crictl_runtime_endpoint }}"
+  address = "unix://{{ containerd_crictl_runtime_endpoint }}"
   gid = 0
   max_recv_message_size = 16777216
   max_send_message_size = 16777216
