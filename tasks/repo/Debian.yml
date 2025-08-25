@@ -16,6 +16,9 @@
       - gnupg
       - lsb-release
       - libc6
+      - python3-apt
+      - python3-requests
+      - python3-urllib3
     state: present
     update_cache: yes
 
@@ -35,6 +38,7 @@
     url: "https://download.docker.com/linux/{{ repo_distribution | trim }}/gpg"
     keyring: /etc/apt/keyrings/docker.gpg
     state: present
+    validate_certs: false
   when: not docker_gpg_key.stat.exists
 
 - name: check if docker repository exists
