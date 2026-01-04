@@ -1,7 +1,7 @@
 ---
 name: molecule
 
-env:
+vars:
   MOLECULE_SCENARIO_LIST: |
     [
       "default",
@@ -95,7 +95,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        scenario: ${{ (github.event.inputs.molecule_scenario || 'all') == 'all' && fromJson(env.MOLECULE_SCENARIO_LIST) || fromJson(format('["{0}"]', github.event.inputs.molecule_scenario)) }}
+        scenario: ${{ (github.event.inputs.molecule_scenario || 'all') == 'all' && fromJson(vars.MOLECULE_SCENARIO_LIST) || fromJson(format('["{0}"]', github.event.inputs.molecule_scenario)) }}
     env:
       DOCKER_HOST: 'unix:///var/run/docker.sock'
     steps:
