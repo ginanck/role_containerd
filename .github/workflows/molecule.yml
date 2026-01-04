@@ -70,6 +70,11 @@ jobs:
     outputs:
       scenarios: ${{ steps.set-matrix.outputs.scenarios }}
     steps:
+      - name: Check out the codebase
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref }}
+
       - name: Set matrix scenarios
         id: set-matrix
         run: |
