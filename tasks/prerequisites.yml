@@ -8,6 +8,14 @@
     group: root
     mode: '0644'
 
+- name: ensure /etc/sysctl.d exists
+  ansible.builtin.file:
+    path: /etc/sysctl.d
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+
 - name: create sysctl configuration file for containerd
   ansible.builtin.template:
     src: sysctl.conf.j2
