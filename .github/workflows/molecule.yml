@@ -98,15 +98,16 @@ jobs:
 
   molecule:
     name: Molecule Test
+    needs: prepare
     runs-on: ubuntu-latest
-    container: 
+    container:
       image: ghcr.io/ginanck/molecule-runner:python3.12-2.15.13
       volumes:
         - /var/run/docker.sock:/var/run/docker.sock
     strategy:
       fail-fast: false
       matrix:
-        scenario: ${{ fromJson(needs.prepare.outputs.scenarios) }}
+        scenario: ${{ fromJson(needs.prepare.outputs.scenarios || '["default"]') }}
     env:
       DOCKER_HOST: 'unix:///var/run/docker.sock'
     steps:
