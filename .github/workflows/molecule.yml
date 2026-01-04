@@ -73,28 +73,41 @@ jobs:
       - name: Set matrix scenarios
         id: set-matrix
         run: |
-          if [ "${{ github.event.inputs.molecule_scenario || 'all' }}" == "all" ]; then
-            scenarios='[
-              "default",
-              "almalinux-9",
-              "almalinux-10",
-              "rockylinux-8",
-              "rockylinux-9",
-              "rockylinux-10",
-              "oraclelinux-8",
-              "oraclelinux-9",
-              "oraclelinux-10",
-              "debian-11",
-              "debian-12",
-              "debian-13",
-              "ubuntu-2004",
-              "ubuntu-2204",
-              "ubuntu-2404"
-            ]'
+          set -euo pipefail
+          input="${{ github.event.inputs.molecule_scenario || 'all' }}"
+
+          if [ "$input" = "all" ]; then
+            scenarios_list=()
+            if [ -d "molecule" ]; then
+              for dir in molecule/*; do
+                [ -d "$dir" ] || continue
+                name="$(basename "$dir")"
+                if [ -f "$dir/molecule.yml" ] || [ -f "$dir/molecule.yaml" ]; then
+                  scenarios_list+=("$name")
+                fi
+              done
+            fi
+
+            if [ "${#scenarios_list[@]}" -eq 0 ]; then
+              echo "No scenario detected or selected! Please configure your molecule scenarios!" >&2
+              exit 1
+            fi
+
+            # build JSON array from list
+            scenarios="$(printf '%s\n' "${scenarios_list[@]}" | jq -R -s -c 'split("\n")[:-1]')"
           else
-            scenarios='["${{ github.event.inputs.molecule_scenario }}"]'
+            # single scenario requested: validate it exists and has molecule.yml
+            sel="$input"
+            if [ -d "molecule/$sel" ] && ( [ -f "molecule/$sel/molecule.yml" ] || [ -f "molecule/$sel/molecule.yaml" ] ); then
+              scenarios="$(jq -n --arg s "$sel" '[$s]')"
+            else
+              echo "No scenario detected or selected! Please configure your molecule scenarios!" >&2
+              exit 1
+            fi
           fi
-          echo "scenarios=$(echo $scenarios | jq -c .)" >> $GITHUB_OUTPUT
+
+          echo "Found scenarios: $scenarios"
+          echo "scenarios=$scenarios" >> $GITHUB_OUTPUT
 
   molecule:
     name: Molecule Test
