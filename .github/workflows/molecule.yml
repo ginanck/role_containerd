@@ -1,24 +1,4 @@
 ---
-env:
-  MOLECULE_SCENARIO_LIST: |
-    [
-      "default",
-      "almalinux-9",
-      "almalinux-10",
-      "rockylinux-8",
-      "rockylinux-9",
-      "rockylinux-10",
-      "oraclelinux-8",
-      "oraclelinux-9",
-      "oraclelinux-10",
-      "debian-11",
-      "debian-12",
-      "debian-13",
-      "ubuntu-2004",
-      "ubuntu-2204",
-      "ubuntu-2404"
-    ]
-
 name: molecule
 on:
   push:
@@ -53,6 +33,26 @@ on:
         required: false
         default: false
         type: boolean
+
+env:
+  MOLECULE_SCENARIO_LIST: |
+    [
+      "default",
+      "almalinux-9",
+      "almalinux-10",
+      "rockylinux-8",
+      "rockylinux-9",
+      "rockylinux-10",
+      "oraclelinux-8",
+      "oraclelinux-9",
+      "oraclelinux-10",
+      "debian-11",
+      "debian-12",
+      "debian-13",
+      "ubuntu-2004",
+      "ubuntu-2204",
+      "ubuntu-2404"
+    ]
 
 jobs:
   lint:
