@@ -1,26 +1,5 @@
 ---
 name: molecule
-
-vars:
-  MOLECULE_SCENARIO_LIST: |
-    [
-      "default",
-      "almalinux-9",
-      "almalinux-10",
-      "rockylinux-8",
-      "rockylinux-9",
-      "rockylinux-10",
-      "oraclelinux-8",
-      "oraclelinux-9",
-      "oraclelinux-10",
-      "debian-11",
-      "debian-12",
-      "debian-13",
-      "ubuntu-2004",
-      "ubuntu-2204",
-      "ubuntu-2404"
-    ]
-
 on:
   push:
     branches:
@@ -85,6 +64,38 @@ jobs:
         run: |
           flake8 --config=flake8.conf .
 
+  prepare:
+    name: Prepare Matrix
+    runs-on: ubuntu-latest
+    outputs:
+      scenarios: ${{ steps.set-matrix.outputs.scenarios }}
+    steps:
+      - name: Set matrix scenarios
+        id: set-matrix
+        run: |
+          if [ "${{ github.event.inputs.molecule_scenario || 'all' }}" == "all" ]; then
+            scenarios='[
+              "default",
+              "almalinux-9",
+              "almalinux-10",
+              "rockylinux-8",
+              "rockylinux-9",
+              "rockylinux-10",
+              "oraclelinux-8",
+              "oraclelinux-9",
+              "oraclelinux-10",
+              "debian-11",
+              "debian-12",
+              "debian-13",
+              "ubuntu-2004",
+              "ubuntu-2204",
+              "ubuntu-2404"
+            ]'
+          else
+            scenarios='["${{ github.event.inputs.molecule_scenario }}"]'
+          fi
+          echo "scenarios=$(echo $scenarios | jq -c .)" >> $GITHUB_OUTPUT
+
   molecule:
     name: Molecule Test
     runs-on: ubuntu-latest
@@ -95,7 +106,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        scenario: ${{ (github.event.inputs.molecule_scenario || 'all') == 'all' && fromJson(vars.MOLECULE_SCENARIO_LIST) || fromJson(format('["{0}"]', github.event.inputs.molecule_scenario)) }}
+        scenario: ${{ fromJson(needs.prepare.outputs.scenarios) }}
     env:
       DOCKER_HOST: 'unix:///var/run/docker.sock'
     steps:
