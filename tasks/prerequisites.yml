@@ -1,7 +1,7 @@
 ---
 
 - name: ensure containerd binaries are in PATH
-  template:
+  ansible.builtin.template:
     src: containerd.sh.j2
     dest: /etc/profile.d/containerd.sh
     owner: root

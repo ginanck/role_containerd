@@ -10,16 +10,16 @@
     - containerd/bin
 
 - name: Set Release Versions
-  import_tasks: binary/set-releases.yml
+  ansible.builtin.import_tasks: binary/set-releases.yml
 
 - name: Set Download URLs
-  import_tasks: binary/set-download-urls.yml
+  ansible.builtin.import_tasks: binary/set-download-urls.yml
 
 - name: Setup Containerd
-  import_tasks: binary/setup-containerd.yml
+  ansible.builtin.import_tasks: binary/setup-containerd.yml
 
 - name: Setup Runc
-  import_tasks: binary/setup-runc.yml
+  ansible.builtin.import_tasks: binary/setup-runc.yml
 
 - name: Setup CNI Plugins
-  import_tasks: binary/setup-cni-plugins.yml
+  ansible.builtin.import_tasks: binary/setup-cni-plugins.yml
