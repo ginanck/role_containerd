@@ -30,13 +30,12 @@
 
 - name: set crictl version from release data
   ansible.builtin.set_fact:
-    crictl_version: "{{ crictl_latest.json.tag_name | regex_replace('^v', '') }}"
+    crictl_version: "{{ crictl_latest.json.tag_name | default('') | regex_replace('^v', '') }}"
   changed_when: false
   when:
+    - crictl_version is not defined or crictl_version | default('') | length == 0
     - crictl_latest is defined
     - crictl_latest.skipped is not defined
-    - crictl_latest.json.tag_name is defined
-    - (crictl_version is not defined or crictl_version | length == 0)
 
 - name: setup crictl binary for repo installation type
   ansible.builtin.include_tasks: "{{ containerd_setup_type }}/crictl.yml"
