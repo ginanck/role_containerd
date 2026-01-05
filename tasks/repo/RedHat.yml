@@ -12,7 +12,7 @@
       - dnf-plugins-core
       - yum-utils
       - glibc
-    state: latest
+    state: present
 
 - name: download docker repository file (RedHat family)
   ansible.builtin.get_url:
@@ -22,9 +22,19 @@
     owner: root
     group: root
 
+- name: check if containernetworking-plugins package is available
+  ansible.builtin.command:
+    cmd: "dnf --quiet list available containernetworking-plugins"
+  register: cnp_avail
+  failed_when: false
+  changed_when: false
+
+- name: set packages to install for RedHat
+  ansible.builtin.set_fact:
+    containerd_install_pkgs: >-
+      {{ ['containerd.io'] + ((cnp_avail is defined and cnp_avail.rc == 0) | ternary(['containernetworking-plugins'], [])) }}
+
 - name: install containerd.io package
   ansible.builtin.dnf:
-    name:
-      - containerd.io
-      - containernetworking-plugins
-    state: latest
+    name: "{{ containerd_install_pkgs }}"
+    state: present

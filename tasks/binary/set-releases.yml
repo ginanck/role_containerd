@@ -58,8 +58,8 @@
 - name: parse and set versions (use latest stable from GitHub)
   ansible.builtin.set_fact:
     "{{ binary.item.name }}_version": >-
-      {{ binary.item.version if binary.item.version | length > 0 else 
-         (item.json | default([]) 
+      {{ binary.item.version if binary.item.version | length > 0 else
+         (item.json | default([])
           | selectattr('prerelease', 'equalto', false)
           | selectattr('draft', 'equalto', false)
           | list | first | default({}) | dict2items

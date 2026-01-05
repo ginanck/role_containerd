@@ -12,7 +12,7 @@
     method: GET
     status_code: 200
     return_content: yes
-  register: crictl_latest
+  register: crictl_latest_no_token
   when: github_access_token is not defined
 
 - name: get latest crictl release version with token
@@ -25,13 +25,22 @@
       X-GitHub-Api-Version: "2022-11-28"
     status_code: 200
     return_content: yes
-  register: crictl_latest
+  register: crictl_latest_with_token
   when: github_access_token is defined
 
-- name: set version facts
+- name: set crictl_latest from appropriate source
   ansible.builtin.set_fact:
-    crictl_version: "{{ crictl_version | default(crictl_latest.json.tag_name | regex_replace('^v', '')) }}"
+    crictl_latest: "{{ crictl_latest_with_token if (crictl_latest_with_token is defined and crictl_latest_with_token.skipped is not defined) else crictl_latest_no_token }}"
   changed_when: false
+
+- name: set crictl version from release data
+  ansible.builtin.set_fact:
+    crictl_version: "{{ crictl_latest.json.tag_name | default('') | regex_replace('^v', '') }}"
+  changed_when: false
+  when:
+    - crictl_latest is defined
+    - crictl_latest.skipped is not defined
+    - crictl_version is not defined or (crictl_version is defined and crictl_version | length == 0)
 
 - name: setup crictl binary for repo installation type
   ansible.builtin.include_tasks: "{{ containerd_setup_type }}/crictl.yml"

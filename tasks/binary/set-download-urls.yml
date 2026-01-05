@@ -18,7 +18,7 @@
       url: "https://github.com/containerd/containerd/releases/download/{{ containerd_tag }}/containerd-{{ containerd_version }}-linux-{{ containerd_architecture }}.tar.gz.sha256sum"
       filename: "containerd-{{ containerd_version }}-linux-{{ containerd_architecture }}.tar.gz.sha256sum"
       type: "checksum"
-    
+
     # Runc binary and verification
     runc_binary:
       url: "https://github.com/opencontainers/runc/releases/download/{{ runc_tag }}/runc.{{ containerd_architecture }}"
@@ -28,7 +28,7 @@
       url: "https://github.com/opencontainers/runc/releases/download/{{ runc_tag }}/runc.{{ containerd_architecture }}.asc"
       filename: "runc.{{ containerd_architecture }}.asc"
       type: "signature"
-    
+
     # CNI plugins binary and verification
     cni_plugins_binary:
       url: "https://github.com/containernetworking/plugins/releases/download/{{ cni_plugins_tag }}/cni-plugins-linux-{{ containerd_architecture }}-{{ cni_plugins_tag }}.tgz"
