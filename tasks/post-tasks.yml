@@ -28,18 +28,15 @@
   register: crictl_latest
   when: github_access_token is defined
 
-- name: extract crictl release data
-  ansible.builtin.set_fact:
-    crictl_payload: >-
-      {{ crictl_latest.json if (crictl_latest is defined and crictl_latest.skipped is not defined and 'json' in crictl_latest)
-         else {} }}
-  changed_when: false
-
 - name: set crictl version from release data
   ansible.builtin.set_fact:
-    crictl_version: "{{ crictl_version | default((crictl_payload.get('tag_name', '') | regex_replace('^v', ''))) }}"
+    crictl_version: "{{ crictl_latest.json.tag_name | regex_replace('^v', '') }}"
   changed_when: false
-  when: crictl_payload.get('tag_name', '') != ''
+  when:
+    - crictl_version is not defined or crictl_version == ''
+    - crictl_latest is defined
+    - crictl_latest.skipped is not defined
+    - crictl_latest.json.tag_name is defined
 
 - name: setup crictl binary for repo installation type
   ansible.builtin.include_tasks: "{{ containerd_setup_type }}/crictl.yml"
