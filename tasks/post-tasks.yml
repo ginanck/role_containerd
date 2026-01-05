@@ -28,6 +28,11 @@
   register: crictl_latest
   when: github_access_token is defined
 
+- name: debug crictl_latest variable
+  ansible.builtin.debug:
+    msg:
+      - "crictl_latest is defined: {{ crictl_latest }}"
+
 - name: set crictl version from release data
   ansible.builtin.set_fact:
     crictl_version: "{{ crictl_latest.json.tag_name | default('') | regex_replace('^v', '') }}"

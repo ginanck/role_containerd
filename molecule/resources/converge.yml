@@ -5,4 +5,4 @@
   # vars:
   #   github_access_token: "{{ lookup('env', 'GITHUB_TOKEN') | default(omit) }}"
   roles:
-    - role: role_containerd
+    - role_containerd
