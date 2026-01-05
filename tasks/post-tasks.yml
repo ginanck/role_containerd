@@ -28,11 +28,15 @@
   register: crictl_latest
   when: github_access_token is defined
 
-- name: set version facts (robust)
+- name: extract crictl release data
   ansible.builtin.set_fact:
     crictl_payload: >-
       {{ crictl_latest.json if (crictl_latest is defined and 'json' in crictl_latest) else
          ((crictl_latest | default({})).content | default('{}') | from_json) }}
+  changed_when: false
+
+- name: set crictl version from release data
+  ansible.builtin.set_fact:
     crictl_version: "{{ crictl_version | default(crictl_payload.tag_name | regex_replace('^v', '')) }}"
   changed_when: false
 
