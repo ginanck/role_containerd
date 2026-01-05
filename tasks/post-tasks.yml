@@ -33,10 +33,10 @@
     crictl_version: "{{ crictl_latest.json.tag_name | regex_replace('^v', '') }}"
   changed_when: false
   when:
-    - crictl_version is not defined or crictl_version == ''
     - crictl_latest is defined
     - crictl_latest.skipped is not defined
     - crictl_latest.json.tag_name is defined
+    - (crictl_version is not defined or crictl_version | length == 0)
 
 - name: setup crictl binary for repo installation type
   ansible.builtin.include_tasks: "{{ containerd_setup_type }}/crictl.yml"
