@@ -30,13 +30,7 @@
 
 - name: set version facts
   ansible.builtin.set_fact:
-    crictl_version: >-
-      {{ crictl_version | default((
-        ((crictl_latest is defined and crictl_latest.json is defined) | ternary(
-          crictl_latest.json.tag_name,
-          (crictl_latest.content | from_json).tag_name
-        )) | regex_replace('^v', '')
-      )) }}
+    crictl_version: "{{ crictl_version | default(crictl_latest.json.tag_name | regex_replace('^v', '')) }}"
   changed_when: false
 
 - name: setup crictl binary for repo installation type

@@ -39,3 +39,5 @@ containerd_crictl_image_endpoint: "{{ containerd_crictl_runtime_endpoint }}"
 containerd_crictl_timeout: 10
 containerd_crictl_debug: false
 containerd_crictl_config_file: /etc/crictl.yaml
+
+crictl_version: ""
