@@ -37,7 +37,7 @@
 
 - name: set crictl version from release data
   ansible.builtin.set_fact:
-    crictl_version: "{{ crictl_version | default(crictl_payload.tag_name | regex_replace('^v', '')) }}"
+    crictl_version: "{{ crictl_version | default((crictl_payload.tag_name | default('')) | regex_replace('^v', '')) }}"
   changed_when: false
 
 - name: setup crictl binary for repo installation type
