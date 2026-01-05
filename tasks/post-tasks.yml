@@ -42,12 +42,6 @@
     - crictl_latest.skipped is not defined
     - crictl_version is not defined or (crictl_version is defined and crictl_version | length == 0)
 
-- name: debug crictl_latest variable
-  ansible.builtin.debug:
-    msg:
-      - "crictl_latest is defined: {{ crictl_latest }}"
-      - "crictl_latest is defined: {{ crictl_version }}"
-
 - name: setup crictl binary for repo installation type
   ansible.builtin.include_tasks: "{{ containerd_setup_type }}/crictl.yml"
   when: containerd_setup_type == "repo"
