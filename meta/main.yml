@@ -2,6 +2,19 @@ galaxy_info:
   author: gkorkmaz
   description: role_containerd to install containerd
 
+  documented_requirements:
+    - src: https://github.com/ginanck/role_base.git
+      version: master
+
+    - name: community.docker
+      version: 4.8.1
+
+    - name: community.general
+      version: 6.6.1
+
+    - name: ansible.posix
+      version: 1.5.4
+
   namespace: core
   role_name: role_containerd
 
