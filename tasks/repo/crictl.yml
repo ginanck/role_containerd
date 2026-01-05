@@ -13,12 +13,29 @@
     mode: '0755'
     remote_src: yes
 
+- name: check if versioned crictl binary exists
+  ansible.builtin.stat:
+    path: "{{ containerd_service_binary_path }}/crictl-{{ crictl_version }}"
+  register: crictl_versioned_binary
+
+- name: install crictl to version-specific path
+  ansible.builtin.copy:
+    src: "{{ containerd_service_binary_path }}/crictl"
+    dest: "{{ containerd_service_binary_path }}/crictl-{{ crictl_version }}"
+    mode: '0755'
+    remote_src: yes
+  when: not crictl_versioned_binary.stat.exists
+
+- name: calculate priority from version
+  ansible.builtin.set_fact:
+    crictl_priority: "{{ (crictl_version.split('.')[0] | int * 10000) + (crictl_version.split('.')[1] | int * 100) + (crictl_version.split('.')[2] | default('0') | int) }}"
+
 - name: set up alternatives for crictl binaries
   community.general.alternatives:
     name: "crictl"
-    path: "{{ containerd_service_binary_path }}/crictl"
+    path: "{{ containerd_service_binary_path }}/crictl-{{ crictl_version }}"
     link: "{{ containerd_binary_link_path }}/crictl"
-    priority: "{{ ansible_date_time.epoch | int }}"
+    priority: "{{ crictl_priority | int }}"
 
 - name: remove rootless setup scripts
   ansible.builtin.file:

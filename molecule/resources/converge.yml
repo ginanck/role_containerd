@@ -2,7 +2,7 @@
 - name: Converge
   hosts: all
   become: true
-  # vars:
-  #   github_access_token: "{{ lookup('env', 'GITHUB_TOKEN') | default(omit) }}"
+  vars:
+    github_access_token: "{{ lookup('env', 'GITHUB_TOKEN') | default(omit) }}"
   roles:
     - role_containerd
