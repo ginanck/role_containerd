@@ -79,35 +79,37 @@ ansible-galaxy install -r meta/install_requirements.yml
 
 ## Role Variables
 
+**These are static variables with lower priority**
 
 
-### File: `defaults/main.yml`
 
-| Variable | Default Value | Description |
-|----------|---------------|-------------|
-| `containerd_setup_type` | `repo` | None |
-| `containerd_binary_link_path` | `/usr/bin` | None |
-| `containerd_service_binary_path` | `/opt/containerd/bin` | None |
-| `containerd_config_file` | `/etc/containerd/config.toml` | None |
-| `containerd_config_systemd_cgroup_enabled` | `True` | None |
-| `containerd_config_disabled_plugins` | `[]` | None |
-| `containerd_systemd_service_file` | `/etc/systemd/system/containerd.service` | None |
-| `containerd_sysctl_conf_file` | `99-containerd.conf` | None |
-| `containerd_sysctl_parameters` | `[]` | None |
-| `containerd_sysctl_parameters.0` | `{}` | None |
-| `containerd_sysctl_parameters.0.name` | `net.ipv4.ip_forward` | None |
-| `containerd_sysctl_parameters.0.value` | `1` | None |
-| `containerd_sysctl_parameters.1` | `{}` | None |
-| `containerd_sysctl_parameters.1.name` | `net.ipv6.conf.all.forwarding` | None |
-| `containerd_sysctl_parameters.1.value` | `1` | None |
-| `containerd_sysctl_parameters.2` | `{}` | None |
-| `containerd_sysctl_parameters.2.name` | `vm.swappiness` | None |
-| `containerd_sysctl_parameters.2.value` | `0` | None |
-| `containerd_crictl_runtime_endpoint` | `/run/containerd/containerd.sock` | None |
-| `containerd_crictl_image_endpoint` | `{{ containerd_crictl_runtime_endpoint }}` | None |
-| `containerd_crictl_timeout` | `10` | None |
-| `containerd_crictl_debug` | `False` | None |
-| `containerd_crictl_config_file` | `/etc/crictl.yaml` | None |
+#### File: defaults/main.yml
+
+| Var | Type | Value |
+|-----|------|-------|
+| [containerd_binary_link_path](defaults/main.yml#L14) | str | `/usr/bin` |
+| [containerd_config_disabled_plugins](defaults/main.yml#L19) | list |  |
+| [containerd_config_file](defaults/main.yml#L17) | str | `/etc/containerd/config.toml` |
+| [containerd_config_systemd_cgroup_enabled](defaults/main.yml#L18) | bool | `True` |
+| [containerd_crictl_config_file](defaults/main.yml#L41) | str | `/etc/crictl.yaml` |
+| [containerd_crictl_debug](defaults/main.yml#L40) | bool |  |
+| [containerd_crictl_image_endpoint](defaults/main.yml#L38) | str | `{{ containerd_crictl_runtime_endpoint }}` |
+| [containerd_crictl_runtime_endpoint](defaults/main.yml#L37) | str | `/run/containerd/containerd.sock` |
+| [containerd_crictl_timeout](defaults/main.yml#L39) | int | `10` |
+| [containerd_service_binary_path](defaults/main.yml#L15) | str | `/opt/containerd/bin` |
+| [containerd_setup_type](defaults/main.yml#L12) | str | `repo` |
+| [containerd_sysctl_conf_file](defaults/main.yml#L28) | str | `99-containerd.conf` |
+| [containerd_sysctl_parameters](defaults/main.yml#L29) | list |  |
+| [containerd_sysctl_parameters.0](defaults/main.yml#L30) | dict |  |
+| [containerd_sysctl_parameters.0.name](defaults/main.yml#L30) | str | `net.ipv4.ip_forward` |
+| [containerd_sysctl_parameters.0.value](defaults/main.yml#L31) | int | `1` |
+| [containerd_sysctl_parameters.1](defaults/main.yml#L32) | dict |  |
+| [containerd_sysctl_parameters.1.name](defaults/main.yml#L32) | str | `net.ipv6.conf.all.forwarding` |
+| [containerd_sysctl_parameters.1.value](defaults/main.yml#L33) | int | `1` |
+| [containerd_sysctl_parameters.2](defaults/main.yml#L34) | dict |  |
+| [containerd_sysctl_parameters.2.name](defaults/main.yml#L34) | str | `vm.swappiness` |
+| [containerd_sysctl_parameters.2.value](defaults/main.yml#L35) | int |  |
+| [containerd_systemd_service_file](defaults/main.yml#L26) | str | `/etc/systemd/system/containerd.service` |
 
 
 
@@ -118,133 +120,172 @@ ansible-galaxy install -r meta/install_requirements.yml
 This role performs the following tasks:
 
 
-### `post-tasks.yml`
+### File: `tasks/post-tasks.yml`
+
+| Task Name | Module | Has Conditions | Line |
+|-----------|--------|----------------|------|
+| [create containerd config directory](tasks/post-tasks.yml#L) | ansible.builtin.file | No | N/A |
+| [get latest crictl release version without token](tasks/post-tasks.yml#L) | ansible.builtin.uri | Yes | N/A |
+| [get latest crictl release version with token](tasks/post-tasks.yml#L) | ansible.builtin.uri | Yes | N/A |
+| [set crictl_latest from appropriate source](tasks/post-tasks.yml#L) | ansible.builtin.set_fact | No | N/A |
+| [set crictl version from release data](tasks/post-tasks.yml#L) | ansible.builtin.set_fact | Yes | N/A |
+| [setup crictl binary for repo installation type](tasks/post-tasks.yml#L) | ansible.builtin.include_tasks | Yes | N/A |
+| [create containerd configuration file](tasks/post-tasks.yml#L) | ansible.builtin.template | No | N/A |
+| [create crictl configuration file](tasks/post-tasks.yml#L) | ansible.builtin.template | No | N/A |
+| [install containerd systemd service](tasks/post-tasks.yml#L) | ansible.builtin.template | No | N/A |
+| [restart containerd service](tasks/post-tasks.yml#L) | ansible.builtin.systemd | Yes | N/A |
 
 
-- **create containerd config directory**
-- **get latest crictl release version without token**
-- **get latest crictl release version with token**
-- **set crictl_latest from appropriate source**
-- **set crictl version from release data**
-- **setup crictl binary for repo installation type**
-- **create containerd configuration file**
-- **create crictl configuration file**
-- **install containerd systemd service**
-- **restart containerd service**
 
 
-### `prerequisites.yml`
+### File: `tasks/prerequisites.yml`
+
+| Task Name | Module | Has Conditions | Line |
+|-----------|--------|----------------|------|
+| [ensure containerd binaries are in PATH](tasks/prerequisites.yml#L) | ansible.builtin.template | No | N/A |
+| [ensure /etc/sysctl.d exists](tasks/prerequisites.yml#L) | ansible.builtin.file | No | N/A |
+| [create sysctl configuration file for containerd](tasks/prerequisites.yml#L) | ansible.builtin.template | No | N/A |
+| [apply sysctl parameters](tasks/prerequisites.yml#L) | ansible.builtin.command | Yes | N/A |
 
 
-- **ensure containerd binaries are in PATH**
-- **ensure /etc/sysctl.d exists**
-- **create sysctl configuration file for containerd**
-- **apply sysctl parameters**
 
 
-### `main.yml`
+### File: `tasks/main.yml`
+
+| Task Name | Module | Has Conditions | Line |
+|-----------|--------|----------------|------|
+| [Install Prerequisite Packages](tasks/main.yml#L) | ansible.builtin.include_tasks | No | N/A |
+| [Setup Containerd runtime](tasks/main.yml#L) | ansible.builtin.include_tasks | No | N/A |
+| [Setup Containerd Configuration](tasks/main.yml#L) | ansible.builtin.include_tasks | No | N/A |
 
 
-- **Install Prerequisite Packages**
-- **Setup Containerd runtime**
-- **Setup Containerd Configuration**
 
 
-### `binary/setup-cni-plugins.yml`
+### File: `tasks/binary/setup-cni-plugins.yml`
+
+| Task Name | Module | Has Conditions | Line |
+|-----------|--------|----------------|------|
+| [download cni plugins binary file](tasks/binary/setup-cni-plugins.yml#L) | ansible.builtin.get_url | No | N/A |
+| [download cni plugins verification file](tasks/binary/setup-cni-plugins.yml#L) | ansible.builtin.get_url | No | N/A |
+| [create cni directories](tasks/binary/setup-cni-plugins.yml#L) | ansible.builtin.file | No | N/A |
+| [extract cni plugins](tasks/binary/setup-cni-plugins.yml#L) | ansible.builtin.unarchive | No | N/A |
 
 
-- **download cni plugins binary file**
-- **download cni plugins verification file**
-- **create cni directories**
-- **extract cni plugins**
 
 
-### `binary/setup-containerd.yml`
+### File: `tasks/binary/setup-containerd.yml`
+
+| Task Name | Module | Has Conditions | Line |
+|-----------|--------|----------------|------|
+| [download containerd binary file](tasks/binary/setup-containerd.yml#L) | ansible.builtin.get_url | No | N/A |
+| [download containerd verification file](tasks/binary/setup-containerd.yml#L) | ansible.builtin.get_url | No | N/A |
+| [extract containerd](tasks/binary/setup-containerd.yml#L) | ansible.builtin.unarchive | No | N/A |
 
 
-- **download containerd binary file**
-- **download containerd verification file**
-- **extract containerd**
 
 
-### `binary/set-download-urls.yml`
+### File: `tasks/binary/set-download-urls.yml`
+
+| Task Name | Module | Has Conditions | Line |
+|-----------|--------|----------------|------|
+| [set architecture if not defined](tasks/binary/set-download-urls.yml#L) | ansible.builtin.set_fact | No | N/A |
+| [set download URLs and filenames for each component](tasks/binary/set-download-urls.yml#L) | ansible.builtin.set_fact | No | N/A |
 
 
-- **set architecture if not defined**
-- **set download URLs and filenames for each component**
 
 
-### `binary/set-releases.yml`
+### File: `tasks/binary/set-releases.yml`
+
+| Task Name | Module | Has Conditions | Line |
+|-----------|--------|----------------|------|
+| [set default version variables if not defined](tasks/binary/set-releases.yml#L) | ansible.builtin.set_fact | No | N/A |
+| [get latest releases from GitHub API for binary versions without token](tasks/binary/set-releases.yml#L) | ansible.builtin.uri | Yes | N/A |
+| [get latest releases from GitHub API for binary versions with token](tasks/binary/set-releases.yml#L) | ansible.builtin.uri | Yes | N/A |
+| [parse and set versions (use latest stable from GitHub)](tasks/binary/set-releases.yml#L) | ansible.builtin.set_fact | Yes | N/A |
+| [set version variables for items with predefined versions](tasks/binary/set-releases.yml#L) | ansible.builtin.set_fact | Yes | N/A |
 
 
-- **set default version variables if not defined**
-- **get latest releases from GitHub API for binary versions without token**
-- **get latest releases from GitHub API for binary versions with token**
-- **parse and set versions (use latest stable from GitHub)**
-- **set version variables for items with predefined versions**
 
 
-### `binary/setup-runc.yml`
+### File: `tasks/binary/setup-runc.yml`
+
+| Task Name | Module | Has Conditions | Line |
+|-----------|--------|----------------|------|
+| [download runc binary file](tasks/binary/setup-runc.yml#L) | ansible.builtin.get_url | No | N/A |
+| [download runc verification file](tasks/binary/setup-runc.yml#L) | ansible.builtin.get_url | No | N/A |
+| [install runc binary](tasks/binary/setup-runc.yml#L) | ansible.builtin.copy | No | N/A |
 
 
-- **download runc binary file**
-- **download runc verification file**
-- **install runc binary**
 
 
-### `binary/main.yml`
+### File: `tasks/binary/main.yml`
+
+| Task Name | Module | Has Conditions | Line |
+|-----------|--------|----------------|------|
+| [Create Packages Directory](tasks/binary/main.yml#L) | ansible.builtin.file | No | N/A |
+| [Set Release Versions](tasks/binary/main.yml#L) | ansible.builtin.import_tasks | No | N/A |
+| [Set Download URLs](tasks/binary/main.yml#L) | ansible.builtin.import_tasks | No | N/A |
+| [Setup Containerd](tasks/binary/main.yml#L) | ansible.builtin.import_tasks | No | N/A |
+| [Setup Runc](tasks/binary/main.yml#L) | ansible.builtin.import_tasks | No | N/A |
+| [Setup CNI Plugins](tasks/binary/main.yml#L) | ansible.builtin.import_tasks | No | N/A |
 
 
-- **Create Packages Directory**
-- **Set Release Versions**
-- **Set Download URLs**
-- **Setup Containerd**
-- **Setup Runc**
-- **Setup CNI Plugins**
 
 
-### `repo/RedHat.yml`
+### File: `tasks/repo/RedHat.yml`
+
+| Task Name | Module | Has Conditions | Line |
+|-----------|--------|----------------|------|
+| [set repository distribution name](tasks/repo/RedHat.yml#L) | ansible.builtin.set_fact | No | N/A |
+| [install dnf-plugins-core (RedHat family)](tasks/repo/RedHat.yml#L) | ansible.builtin.dnf | No | N/A |
+| [download docker repository file (RedHat family)](tasks/repo/RedHat.yml#L) | ansible.builtin.get_url | No | N/A |
+| [check if containernetworking-plugins package is available](tasks/repo/RedHat.yml#L) | ansible.builtin.command | No | N/A |
+| [set packages to install for RedHat](tasks/repo/RedHat.yml#L) | ansible.builtin.set_fact | No | N/A |
+| [install containerd.io package](tasks/repo/RedHat.yml#L) | ansible.builtin.dnf | No | N/A |
 
 
-- **set repository distribution name**
-- **install dnf-plugins-core (RedHat family)**
-- **download docker repository file (RedHat family)**
-- **check if containernetworking-plugins package is available**
-- **set packages to install for RedHat**
-- **install containerd.io package**
 
 
-### `repo/Debian.yml`
+### File: `tasks/repo/Debian.yml`
+
+| Task Name | Module | Has Conditions | Line |
+|-----------|--------|----------------|------|
+| [set repository distribution name](tasks/repo/Debian.yml#L) | ansible.builtin.set_fact | No | N/A |
+| [install prerequisites (Debian family)](tasks/repo/Debian.yml#L) | ansible.builtin.apt | No | N/A |
+| [create keyrings directory (Debian family)](tasks/repo/Debian.yml#L) | ansible.builtin.file | No | N/A |
+| [check if docker gpg key exists](tasks/repo/Debian.yml#L) | ansible.builtin.stat | No | N/A |
+| [add docker gpg key (Debian family)](tasks/repo/Debian.yml#L) | ansible.builtin.apt_key | Yes | N/A |
+| [check if docker repository exists](tasks/repo/Debian.yml#L) | ansible.builtin.stat | No | N/A |
+| [add docker repository (Debian family)](tasks/repo/Debian.yml#L) | ansible.builtin.apt_repository | Yes | N/A |
+| [install containerd.io package](tasks/repo/Debian.yml#L) | ansible.builtin.apt | No | N/A |
 
 
-- **set repository distribution name**
-- **install prerequisites (Debian family)**
-- **create keyrings directory (Debian family)**
-- **check if docker gpg key exists**
-- **add docker gpg key (Debian family)**
-- **check if docker repository exists**
-- **add docker repository (Debian family)**
-- **install containerd.io package**
 
 
-### `repo/crictl.yml`
+### File: `tasks/repo/crictl.yml`
+
+| Task Name | Module | Has Conditions | Line |
+|-----------|--------|----------------|------|
+| [create containerd bin dir](tasks/repo/crictl.yml#L) | ansible.builtin.file | No | N/A |
+| [extract crictl](tasks/repo/crictl.yml#L) | ansible.builtin.unarchive | No | N/A |
+| [check if versioned crictl binary exists](tasks/repo/crictl.yml#L) | ansible.builtin.stat | No | N/A |
+| [install crictl to version-specific path](tasks/repo/crictl.yml#L) | ansible.builtin.copy | Yes | N/A |
+| [calculate priority from version](tasks/repo/crictl.yml#L) | ansible.builtin.set_fact | No | N/A |
+| [set up alternatives for crictl binaries](tasks/repo/crictl.yml#L) | community.general.alternatives | No | N/A |
+| [remove rootless setup scripts](tasks/repo/crictl.yml#L) | ansible.builtin.file | No | N/A |
+| [find containerd binary path](tasks/repo/crictl.yml#L) | ansible.builtin.command | No | N/A |
+| [set default containerd path](tasks/repo/crictl.yml#L) | ansible.builtin.set_fact | No | N/A |
 
 
-- **create containerd bin dir**
-- **extract crictl**
-- **check if versioned crictl binary exists**
-- **install crictl to version-specific path**
-- **calculate priority from version**
-- **set up alternatives for crictl binaries**
-- **remove rootless setup scripts**
-- **find containerd binary path**
-- **set default containerd path**
 
 
-### `repo/main.yml`
+### File: `tasks/repo/main.yml`
+
+| Task Name | Module | Has Conditions | Line |
+|-----------|--------|----------------|------|
+| [Install containerd.io package](tasks/repo/main.yml#L) | ansible.builtin.include_tasks | No | N/A |
 
 
-- **Install containerd.io package**
 
 
 
@@ -264,41 +305,6 @@ This role performs the following tasks:
         containerd_service_binary_path: /opt/containerd/bin
 
 ```
-
-## Documentation Maintenance
-
-### Updating Dependencies
-
-1. **Update** `meta/main.yml`:
-   ```yaml
-   documented_requirements:
-     - src: https://github.com/user/role.git
-       version: master
-     - name: collection.name
-       version: 1.0.0
-   ```
-
-2. **Sync** `meta/install_requirements.yml` with the same requirements
-
-3. **Regenerate** documentation:
-   ```bash
-   pre-commit run --all-files
-   ```
-
-### Template Updates
-
-- Edit `.docsible_template.md` for structure changes
-- Test with: `docsible --role . --md-template .docsible_template.md -nob -com -tl`
-- Commit both template and generated README.md
-
-### Quick Checklist
-
-When updating dependencies:
-- [ ] Add to `meta/main.yml` → `documented_requirements`
-- [ ] Add to `meta/install_requirements.yml`
-- [ ] Run `pre-commit run --all-files`
-- [ ] Verify generated README.md
-- [ ] Commit all changes
 
 ## License
 
