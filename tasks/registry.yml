@@ -1,0 +1,52 @@
+---
+
+- name: create registry configuration directory
+  ansible.builtin.file:
+    path: "{{ containerd_registry_config_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+  when: containerd_registry_mirrors | length > 0
+
+- name: create per-registry configuration directories
+  ansible.builtin.file:
+    path: "{{ containerd_registry_config_dir }}/{{ item.key }}"
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+  loop: "{{ containerd_registry_mirrors | dict2items }}"
+  loop_control:
+    label: "{{ item.key }}"
+  when: containerd_registry_mirrors | length > 0
+
+- name: install registry CA certificates
+  ansible.builtin.copy:
+    src: "{{ item.value.ca_file }}"
+    dest: "{{ containerd_registry_config_dir }}/{{ item.key }}/ca.crt"
+    owner: root
+    group: root
+    mode: '0644'
+    # ca_file is an absolute path on the managed host
+    remote_src: true
+  loop: "{{ containerd_registry_mirrors | dict2items }}"
+  loop_control:
+    label: "{{ item.key }}"
+  when:
+    - containerd_registry_mirrors | length > 0
+    - item.value.ca_file | default('') | length > 0
+  notify: restart containerd
+
+- name: render per-registry hosts.toml
+  ansible.builtin.template:
+    src: hosts.toml.j2
+    dest: "{{ containerd_registry_config_dir }}/{{ item.key }}/hosts.toml"
+    owner: root
+    group: root
+    mode: '0644'
+  loop: "{{ containerd_registry_mirrors | dict2items }}"
+  loop_control:
+    label: "{{ item.key }}"
+  when: containerd_registry_mirrors | length > 0
+  notify: restart containerd

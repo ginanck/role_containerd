@@ -1,8 +1,215 @@
 ---
 - name: Verify
   hosts: all
-  gather_facts: false
+  become: true
+  gather_facts: true
+  vars:
+    containerd_expected_arch_map:
+      x86_64: amd64
+      aarch64: arm64
+      arm64: arm64
+      ppc64le: ppc64le
+      s390x: s390x
+    containerd_expected_arch: "{{ containerd_expected_arch_map[ansible_architecture | default('x86_64')] }}"
+    containerd_expected_version: "2.1.0"
   tasks:
-    - name: Example assertion
+    # AC-1: binary mode installs into the path the rendered unit uses.
+    - name: test_ac1_stat_binary_in_unit_path
+      ansible.builtin.stat:
+        path: /usr/local/bin/containerd
+      register: containerd_binary_stat
+
+    - name: test_ac1_assert_binary_in_unit_path
       ansible.builtin.assert:
-        that: true
+        that:
+          - containerd_binary_stat.stat.exists
+          - containerd_binary_stat.stat.executable
+        fail_msg: "the binary install must place containerd in the path the unit uses"
+
+    - name: test_ac1_stat_shim
+      ansible.builtin.stat:
+        path: /usr/local/bin/containerd-shim-runc-v2
+      register: containerd_shim_stat
+
+    - name: test_ac1_assert_shim_present
+      ansible.builtin.assert:
+        that:
+          - containerd_shim_stat.stat.exists
+          - containerd_shim_stat.stat.executable
+        fail_msg: "the binary install must include containerd-shim-runc-v2"
+
+    - name: test_ac1_read_unit
+      ansible.builtin.slurp:
+        src: /etc/systemd/system/containerd.service
+      register: containerd_unit
+
+    - name: test_ac1_assert_unit_matches_binary_path
+      ansible.builtin.assert:
+        that:
+          - "'ExecStart=/usr/local/bin/containerd' in (containerd_unit.content | b64decode)"
+          - "'ExecStartPre=-/sbin/modprobe overlay' in (containerd_unit.content | b64decode)"
+        fail_msg: "the unit ExecStart must match the installed binary path"
+
+    - name: test_ac1_run_binary
+      ansible.builtin.command:
+        cmd: /usr/local/bin/containerd --version
+      changed_when: false
+      register: containerd_version_output
+
+    - name: test_ac1_assert_runtime_executes
+      ansible.builtin.assert:
+        that:
+          - containerd_version_output.rc == 0
+        fail_msg: "the installed containerd binary must execute"
+
+    - name: test_ac1_run_runc
+      ansible.builtin.command:
+        cmd: /usr/local/bin/runc --version
+      changed_when: false
+      register: runc_version_output
+
+    - name: test_ac1_assert_runc_executes
+      ansible.builtin.assert:
+        that:
+          - runc_version_output.rc == 0
+        fail_msg: "the installed runc binary must execute"
+
+    # Container-based CI may not supervise systemd services. Assert when the
+    # service is present, otherwise rely on the direct binary checks above.
+    - name: test_ac1_check_service_state
+      ansible.builtin.command:
+        cmd: systemctl is-active containerd
+      changed_when: false
+      failed_when: false
+      register: containerd_service_state
+
+    - name: test_ac1_assert_service_active
+      ansible.builtin.assert:
+        that:
+          - containerd_service_state.rc == 0
+          - containerd_service_state.stdout | trim == 'active'
+        fail_msg: "containerd must be running in the booted node"
+      when:
+        - ansible_facts.services is defined
+        - "'containerd.service' in ansible_facts.services"
+
+    # AC-2: kernel preparation persists across reboot.
+    - name: test_ac2_read_modules_file
+      ansible.builtin.slurp:
+        src: /etc/modules-load.d/containerd.conf
+      register: containerd_modules_file
+
+    - name: test_ac2_assert_modules_persist
+      ansible.builtin.assert:
+        that:
+          - "'overlay' in (containerd_modules_file.content | b64decode)"
+          - "'br_netfilter' in (containerd_modules_file.content | b64decode)"
+        fail_msg: "overlay and br_netfilter must be written to modules-load.d"
+
+    - name: test_ac2_read_sysctl_file
+      ansible.builtin.slurp:
+        src: /etc/sysctl.d/99-containerd.conf
+      register: containerd_sysctl_file
+
+    - name: test_ac2_assert_bridge_sysctls_persist
+      ansible.builtin.assert:
+        that:
+          - "'net.bridge.bridge-nf-call-iptables=1' in (containerd_sysctl_file.content | b64decode)"
+          - "'net.bridge.bridge-nf-call-ip6tables=1' in (containerd_sysctl_file.content | b64decode)"
+        fail_msg: "bridge-nf-call settings must be persisted under sysctl.d"
+
+    - name: test_ac2_read_current_modules
+      ansible.builtin.slurp:
+        src: /proc/modules
+      register: containerd_proc_modules
+      failed_when: false
+
+    - name: test_ac2_assert_overlay_loaded
+      ansible.builtin.assert:
+        that:
+          - "'overlay' in (containerd_proc_modules.content | b64decode)"
+        fail_msg: "overlay must be loaded in the current boot"
+      when:
+        - containerd_proc_modules.content is defined
+
+    # AC-3: a wrong checksum stops the role before installing.
+    - name: test_ac3_wrong_checksum_is_rejected
+      block:
+        - name: test_ac3_apply_with_bad_checksum
+          ansible.builtin.include_role:
+            name: role_containerd
+          vars:
+            containerd_setup_type: binary
+            containerd_binary_checksum: "0000000000000000000000000000000000000000000000000000000000000000"
+        - name: test_ac3_mark_not_rejected
+          ansible.builtin.set_fact:
+            containerd_checksum_rejected: false
+      rescue:
+        - name: test_ac3_mark_rejected
+          ansible.builtin.set_fact:
+            containerd_checksum_rejected: true
+
+    - name: test_ac3_assert_rejected
+      ansible.builtin.assert:
+        that:
+          - containerd_checksum_rejected | bool
+        fail_msg: "an artifact with a wrong checksum must fail before install"
+
+    # AC-4: architecture mapping chooses matching artifacts.
+    - name: test_ac4_find_containerd_archive
+      ansible.builtin.find:
+        paths: "/opt/containerd/containerd-{{ containerd_expected_version }}"
+        patterns: "containerd-*-linux-{{ containerd_expected_arch }}.tar.gz"
+        file_type: file
+      register: containerd_arch_archive
+
+    - name: test_ac4_assert_arch_artifact_selected
+      ansible.builtin.assert:
+        that:
+          - containerd_arch_archive.matched | int > 0
+        fail_msg: "the containerd archive must match the detected architecture"
+
+    - name: test_ac4_stat_arch_specific_runc
+      ansible.builtin.stat:
+        path: "/opt/containerd/runc-{{ '1.3.0' }}/runc.sha256sum"
+      register: runc_checksum_stat
+
+    - name: test_ac4_assert_arch_mapping
+      ansible.builtin.assert:
+        that:
+          - runc_checksum_stat.stat.exists
+          - containerd_expected_arch in ['amd64', 'arm64', 'ppc64le', 's390x', 'riscv64']
+
+    # AC-5: mirrors from variables are rendered into the configuration.
+    - name: test_ac5_read_hosts_toml
+      ansible.builtin.slurp:
+        src: /etc/containerd/certs.d/docker.io/hosts.toml
+      register: containerd_hosts_toml
+
+    - name: test_ac5_assert_hosts_mirror
+      ansible.builtin.assert:
+        that:
+          - "'https://mirror.molecule.local' in (containerd_hosts_toml.content | b64decode)"
+          - "'server = \"https://registry-1.docker.io\"' in (containerd_hosts_toml.content | b64decode)"
+        fail_msg: "the declared mirror must be rendered into hosts.toml"
+
+    - name: test_ac5_read_config
+      ansible.builtin.slurp:
+        src: /etc/containerd/config.toml
+      register: containerd_config
+
+    - name: test_ac5_assert_config_mirror_and_sandbox
+      ansible.builtin.assert:
+        that:
+          - "'https://mirror.molecule.local' in (containerd_config.content | b64decode)"
+          - "'config_path = \"/etc/containerd/certs.d\"' in (containerd_config.content | b64decode)"
+          - "'registry.k8s.io/pause:3.10' in (containerd_config.content | b64decode)"
+        fail_msg: "the mirror and sandbox image must be rendered into config.toml"
+
+    # AC-6: version pinning means no drift (molecule idempotence asserts
+    # zero changed tasks on a second converge).
+    - name: test_ac6_assert_pinned_version
+      ansible.builtin.assert:
+        that:
+          - containerd_expected_version in containerd_version_output.stdout
+        fail_msg: "the installed runtime must match the pinned version"

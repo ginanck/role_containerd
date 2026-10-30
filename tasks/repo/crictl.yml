@@ -8,10 +8,11 @@
 
 - name: extract crictl
   ansible.builtin.unarchive:
-    src: "https://github.com/kubernetes-sigs/cri-tools/releases/download/v{{ crictl_version }}/crictl-v{{ crictl_version }}-linux-amd64.tar.gz"
+    src: "https://github.com/kubernetes-sigs/cri-tools/releases/download/v{{ crictl_version }}/crictl-v{{ crictl_version }}-linux-{{ containerd_architecture }}.tar.gz"
     dest: "{{ containerd_service_binary_path }}/"
     mode: '0755'
-    remote_src: yes
+    remote_src: true
+    creates: "{{ containerd_service_binary_path }}/crictl"
 
 - name: check if versioned crictl binary exists
   ansible.builtin.stat:

@@ -2,18 +2,24 @@
 
 - name: create containerd config directory
   ansible.builtin.file:
-    path: /etc/containerd
+    path: "{{ containerd_config_file | dirname }}"
     state: directory
+    owner: root
+    group: root
     mode: '0755'
 
+# Version pins mean no release lookup on a normal run. The lookup is kept
+# only for an explicit empty crictl_version.
 - name: get latest crictl release version without token
   ansible.builtin.uri:
     url: https://api.github.com/repos/kubernetes-sigs/cri-tools/releases/latest
     method: GET
     status_code: 200
-    return_content: yes
+    return_content: true
   register: crictl_latest_no_token
-  when: github_access_token is not defined
+  when:
+    - github_access_token is not defined
+    - containerd_crictl_version | length == 0
 
 - name: get latest crictl release version with token
   ansible.builtin.uri:
@@ -24,27 +30,55 @@
       Accept: "application/vnd.github.v3+json"
       X-GitHub-Api-Version: "2022-11-28"
     status_code: 200
-    return_content: yes
+    return_content: true
   register: crictl_latest_with_token
-  when: github_access_token is defined
+  when:
+    - github_access_token is defined
+    - containerd_crictl_version | length == 0
 
 - name: set crictl_latest from appropriate source
   ansible.builtin.set_fact:
     crictl_latest: "{{ crictl_latest_with_token if (crictl_latest_with_token is defined and crictl_latest_with_token.skipped is not defined) else crictl_latest_no_token }}"
   changed_when: false
+  when: containerd_crictl_version | length == 0
 
 - name: set crictl version from release data
   ansible.builtin.set_fact:
     crictl_version: "{{ crictl_latest.json.tag_name | default('') | regex_replace('^v', '') }}"
   changed_when: false
   when:
+    - containerd_crictl_version | length == 0
     - crictl_latest is defined
     - crictl_latest.skipped is not defined
-    - crictl_version is not defined or (crictl_version is defined and crictl_version | length == 0)
+
+- name: use the pinned crictl version
+  ansible.builtin.set_fact:
+    crictl_version: "{{ containerd_crictl_version }}"
+  changed_when: false
+  when: containerd_crictl_version | length > 0
 
 - name: setup crictl binary for repo installation type
   ansible.builtin.include_tasks: "{{ containerd_setup_type }}/crictl.yml"
   when: containerd_setup_type == "repo"
+
+- name: render registry mirror and host configuration
+  ansible.builtin.include_tasks: registry.yml
+
+# The installed runtime decides the config schema: containerd 2.x requires
+# version 3 (version 2 is the deprecated 1.x schema).
+- name: detect installed containerd version
+  ansible.builtin.command:
+    cmd: "{{ containerd_service_binary_path }}/containerd --version"
+  register: containerd_installed_version
+  changed_when: false
+  failed_when: false
+
+- name: set config version from the installed binary
+  ansible.builtin.set_fact:
+    containerd_config_version: >-
+      {{ '3' if (containerd_installed_version.stdout | default('')
+                 | regex_search('v(\\d+)\\.', '\\1') | default(['0'], true) | first | int) >= 2 else '2' }}
+  when: containerd_installed_version.rc | default(1) == 0
 
 - name: create containerd configuration file
   ansible.builtin.template:
@@ -54,7 +88,7 @@
     group: root
     mode: '0644'
     backup: true
-  register: containerd_config_toml_result
+  notify: restart containerd
 
 - name: create crictl configuration file
   ansible.builtin.template:
@@ -64,9 +98,10 @@
     group: root
     mode: '0644'
     backup: true
-  register: crictl_conf_result
 
-- name: install containerd systemd service
+# The distribution package ships its own unit. Binary mode needs a unit
+# whose ExecStart points at the directory the tarball was installed into.
+- name: install containerd systemd service for binary installs
   ansible.builtin.template:
     src: containerd.service.j2
     dest: "{{ containerd_systemd_service_file }}"
@@ -74,15 +109,12 @@
     group: root
     mode: '0644'
     backup: true
-  register: containerd_service_result
+  notify: restart containerd
+  when: containerd_setup_type == "binary"
 
-- name: restart containerd service
+- name: ensure containerd service is enabled and running
   ansible.builtin.systemd:
     name: containerd
-    state: restarted
-    enabled: yes
-    daemon_reload: yes
-  when: >
-    (crictl_conf_result is defined and crictl_conf_result.changed) or
-    (containerd_service_result is defined and containerd_service_result.changed) or
-    (containerd_config_toml_result is defined and containerd_config_toml_result.changed)
+    state: started
+    enabled: true
+    daemon_reload: true

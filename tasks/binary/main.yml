@@ -1,19 +1,29 @@
 ---
 
-- name: Create Packages Directory
+- name: pin the binary install path used by the rendered unit
+  ansible.builtin.set_fact:
+    containerd_service_binary_path: "{{ containerd_binary_install_path }}"
+
+- name: create binary staging and install directories
   ansible.builtin.file:
-    path: "/opt/{{ item }}"
+    path: "{{ item }}"
     state: directory
     mode: '0755'
   loop:
-    - containerd
-    - containerd/bin
+    - "{{ containerd_binary_install_path }}"
+    - "{{ containerd_binary_staging_path }}"
+    - "{{ containerd_binary_staging_path }}/containerd-{{ containerd_version }}"
+    - "{{ containerd_binary_staging_path }}/runc-{{ containerd_runc_version }}"
+    - "{{ containerd_binary_staging_path }}/cni-{{ containerd_cni_plugins_version }}"
 
 - name: Set Release Versions
   ansible.builtin.import_tasks: binary/set-releases.yml
 
 - name: Set Download URLs
   ansible.builtin.import_tasks: binary/set-download-urls.yml
+
+- name: Resolve and verify artifact checksums
+  ansible.builtin.import_tasks: binary/resolve-checksums.yml
 
 - name: Setup Containerd
   ansible.builtin.import_tasks: binary/setup-containerd.yml

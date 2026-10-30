@@ -1,0 +1,11 @@
+# {{ ansible_managed }} - DO NOT EDIT MANUALLY
+# Registry host configuration for {{ item.key }}
+server = "{{ item.value.server | default('https://' ~ item.key) }}"
+{% if item.value.ca_file | default('') | length > 0 %}
+ca = "{{ containerd_registry_config_dir }}/{{ item.key }}/ca.crt"
+{% endif %}
+{% for mirror in item.value.mirrors | default([]) %}
+
+[host."{{ mirror }}"]
+  capabilities = ["pull", "resolve"]
+{% endfor %}

@@ -1,0 +1,57 @@
+---
+# Kernel preparation for Kubernetes. Both the modules and the sysctls are
+# written to disk so they are re-applied on every boot, and then applied to
+# the running kernel.
+
+- name: ensure modules-load.d exists
+  ansible.builtin.file:
+    path: /etc/modules-load.d
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+
+- name: persist required kernel modules
+  ansible.builtin.template:
+    src: modules.conf.j2
+    dest: "{{ containerd_modules_load_file }}"
+    owner: root
+    group: root
+    mode: '0644'
+  register: containerd_modules_file
+
+- name: load required kernel modules in the current boot
+  community.general.modprobe:
+    name: "{{ item }}"
+    state: present
+  loop: "{{ containerd_kernel_modules }}"
+  # A container may not be able to load modules. Persistence above is what
+  # prepares the node for reboot, so a failure here is reported, not fatal.
+  failed_when: false
+
+- name: ensure /etc/sysctl.d exists
+  ansible.builtin.file:
+    path: /etc/sysctl.d
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+
+- name: create sysctl configuration file for containerd
+  ansible.builtin.template:
+    src: sysctl.conf.j2
+    dest: "/etc/sysctl.d/{{ containerd_sysctl_conf_file }}"
+    owner: root
+    group: root
+    mode: '0644'
+  register: sysctl_config
+
+- name: apply sysctl parameters to the running kernel
+  ansible.builtin.command: "sysctl -p /etc/sysctl.d/{{ containerd_sysctl_conf_file }}"
+  # Bridge settings need br_netfilter; in a container the key may be absent
+  # even though it is persisted for the next boot.
+  failed_when: false
+  changed_when: sysctl_config.changed
+  when:
+    - containerd_apply_sysctl | bool
+    - sysctl_config.changed

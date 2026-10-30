@@ -4,17 +4,48 @@
 # https://containerd.io/downloads/
 # https://github.com/containerd/containerd/blob/main/docs/getting-started.md
 
-# containerd_version: "2.1.0"
-# containerd_runc_version: "1.3.0"
-# containerd_cni_plugins_version: "1.7.1"
-# containerd_architecture: "amd64"
-
+# Install mode: "repo" (distribution package) or "binary" (pinned tarballs).
 containerd_setup_type: "repo"
 
-containerd_binary_link_path: /usr/bin
-containerd_service_binary_path: "/opt/containerd/bin"
+# ================================================================
+# VERSION PINS
+# ================================================================
+# Every download is pinned. When a version is set the role never queries
+# GitHub for "latest", so repeated runs cannot drift to a new release.
+containerd_version: "2.1.0"
+containerd_runc_version: "1.3.0"
+containerd_cni_plugins_version: "1.7.1"
+containerd_crictl_version: "1.32.0"
+
+# ================================================================
+# ARCHITECTURE
+# ================================================================
+# Map the Ansible fact to the architecture suffix used by the upstream
+# release artifacts. Unknown values fall back to the fact itself.
+containerd_arch_map:
+  x86_64: amd64
+  amd64: amd64
+  aarch64: arm64
+  arm64: arm64
+  ppc64le: ppc64le
+  s390x: s390x
+  riscv64: riscv64
+
+containerd_architecture: >-
+  {{ containerd_arch_map[ansible_architecture | default('x86_64')] | default(ansible_architecture | default('amd64')) }}
+
+# ================================================================
+# PATHS
+# ================================================================
+# Binary install mode copies the release binaries into this directory.
+# The rendered unit uses the same path (containerd_service_binary_path).
+containerd_binary_install_path: /usr/local/bin
+containerd_binary_staging_path: /opt/containerd
+containerd_binary_link_path: /usr/local/bin
+containerd_service_binary_path: /usr/local/bin
 
 containerd_config_file: /etc/containerd/config.toml
+containerd_config_version: "{{ '3' if containerd_version is version('2.0.0', '>=') else '2' }}"
 containerd_config_systemd_cgroup_enabled: true
 containerd_config_disabled_plugins: []
   # - "cri"
@@ -25,15 +56,79 @@ containerd_config_disabled_plugins: []
 
 containerd_systemd_service_file: /etc/systemd/system/containerd.service
 
+# CNI plugin locations
+containerd_cni_bin_dir: /opt/cni/bin
+containerd_cni_conf_dir: /etc/cni/net.d
+
+# ================================================================
+# CHECKSUM VERIFICATION
+# ================================================================
+# Raw hex sha256, one value per artifact. Leave empty to use the
+# per-architecture maps below, and if those are empty the role reads the
+# checksum file published next to the release asset and refuses to install
+# when it does not match.
+containerd_checksum_algorithm: sha256
+containerd_binary_checksum: ""
+containerd_runc_checksum: ""
+containerd_cni_plugins_checksum: ""
+
+# Per-architecture checksum pins, keyed by artifact architecture suffix:
+# containerd_binary_checksums:
+#   amd64: "<64 hex characters>"
+#   arm64: "<64 hex characters>"
+containerd_binary_checksums: {}
+containerd_runc_checksums: {}
+containerd_cni_plugins_checksums: {}
+
+# ================================================================
+# KERNEL PREPARATION (persists across reboots)
+# ================================================================
+containerd_kernel_modules:
+  - overlay
+  - br_netfilter
+containerd_modules_load_file: /etc/modules-load.d/containerd.conf
+
 containerd_sysctl_conf_file: "99-containerd.conf"
 containerd_sysctl_parameters:
   - name: net.ipv4.ip_forward
     value: 1
   - name: net.ipv6.conf.all.forwarding
     value: 1
+  - name: net.bridge.bridge-nf-call-iptables
+    value: 1
+  - name: net.bridge.bridge-nf-call-ip6tables
+    value: 1
   - name: vm.swappiness
     value: 0
+# Apply the settings to the running kernel as well as persisting them.
+# Loading kernel modules or writing sysctls can be impossible in an
+# unprivileged container, so apply failures are reported but not fatal;
+# the persisted files are what make the settings survive a reboot.
+containerd_apply_sysctl: true
 
+# ================================================================
+# REGISTRY CONFIGURATION
+# ================================================================
+# Per-registry host configuration rendered under this directory and
+# referenced from config.toml (registry config_path + mirrors).
+containerd_registry_config_dir: /etc/containerd/certs.d
+containerd_registry_config_path: "{{ containerd_registry_config_dir }}"
+
+# Shape (all keys except mirrors are optional):
+# containerd_registry_mirrors:
+#   "docker.io":
+#     server: "https://registry-1.docker.io"
+#     mirrors:
+#       - "https://mirror.example.com"
+#     ca_file: "/etc/pki/ca-trust/source/anchors/registry-ca.crt"  # host path, copied as ca.crt
+containerd_registry_mirrors: {}
+
+# Sandbox image used by the CRI plugin. Must match what the cluster expects.
+containerd_sandbox_image: "registry.k8s.io/pause:3.10"
+
+# ================================================================
+# CRI TOOLING
+# ================================================================
 containerd_crictl_runtime_endpoint: /run/containerd/containerd.sock
 containerd_crictl_image_endpoint: "{{ containerd_crictl_runtime_endpoint }}"
 containerd_crictl_timeout: 10

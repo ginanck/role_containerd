@@ -21,6 +21,7 @@ After=network.target dbus.service
 
 [Service]
 ExecStartPre=-/sbin/modprobe overlay
+ExecStartPre=-/sbin/modprobe br_netfilter
 ExecStart={{ containerd_service_binary_path }}/containerd
 Type=notify
 Delegate=yes

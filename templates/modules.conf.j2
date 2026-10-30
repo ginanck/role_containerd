@@ -1,0 +1,7 @@
+---
+# {{ ansible_managed }} - DO NOT EDIT MANUALLY
+# Kernel modules required by containerd and the Kubernetes bridge setup.
+# Loaded at boot by systemd-modules-load.
+{% for module in containerd_kernel_modules %}
+{{ module }}
+{% endfor %}

@@ -2,5 +2,20 @@
 - name: Prepare
   hosts: all
   become: true
+  vars:
+    # Molecule only needs the base prerequisites; a full security update is
+    # unrelated to this role and makes container provisioning slow and flaky.
+    base_apply_security_patches: false
+    base_apply_os_patches: false
+    base_apply_kernel_patches: false
+  pre_tasks:
+    # The image boots dnf-makecache.timer, which races package installs and
+    # has been seen deleting a package between download and transaction.
+    - name: Stop the background dnf metadata refresh during provisioning
+      ansible.builtin.systemd:
+        name: dnf-makecache.timer
+        state: stopped
+        enabled: false
+      failed_when: false
   roles:
     - role_base

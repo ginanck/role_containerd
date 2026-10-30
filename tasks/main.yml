@@ -4,6 +4,9 @@
 - name: Install Prerequisite Packages
   ansible.builtin.include_tasks: prerequisites.yml
 
+- name: Prepare the kernel (persistent modules and sysctls)
+  ansible.builtin.include_tasks: kernel.yml
+
 - name: Setup Containerd runtime
   ansible.builtin.include_tasks: "{{ containerd_setup_type }}/main.yml"
 

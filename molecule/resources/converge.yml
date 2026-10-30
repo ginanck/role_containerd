@@ -1,8 +1,30 @@
 ---
-- name: Converge
+- name: Converge (package install mode)
   hosts: all
   become: true
   vars:
     github_access_token: "{{ lookup('env', 'GITHUB_TOKEN') | default(omit) }}"
+    containerd_setup_type: repo
+    containerd_registry_mirrors:
+      "docker.io":
+        server: "https://registry-1.docker.io"
+        mirrors:
+          - "https://mirror.molecule.local"
+    containerd_sandbox_image: "registry.k8s.io/pause:3.10"
+  roles:
+    - role_containerd
+
+- name: Converge (binary install mode)
+  hosts: all
+  become: true
+  vars:
+    github_access_token: "{{ lookup('env', 'GITHUB_TOKEN') | default(omit) }}"
+    containerd_setup_type: binary
+    containerd_registry_mirrors:
+      "docker.io":
+        server: "https://registry-1.docker.io"
+        mirrors:
+          - "https://mirror.molecule.local"
+    containerd_sandbox_image: "registry.k8s.io/pause:3.10"
   roles:
     - role_containerd
